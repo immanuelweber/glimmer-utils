@@ -4,7 +4,7 @@ from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 
 
-class GlimmerDataModule(pl.LightningDataModule):
+class PatchedDataModule(pl.LightningDataModule):
     @classmethod
     def from_datasets(
         cls,
