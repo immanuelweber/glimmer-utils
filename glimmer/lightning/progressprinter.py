@@ -1,3 +1,5 @@
+# Copyright (c) 2021 Immanuel Weber. Licensed under the MIT license (see LICENSE).
+
 import random
 import time
 from typing import Any

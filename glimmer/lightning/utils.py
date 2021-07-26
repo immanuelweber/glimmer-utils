@@ -1,3 +1,5 @@
+# Copyright (c) 2021 Immanuel Weber. Licensed under the MIT license (see LICENSE).
+
 def get_num_training_batches(trainer):
     if (
         isinstance(trainer.limit_train_batches, int)

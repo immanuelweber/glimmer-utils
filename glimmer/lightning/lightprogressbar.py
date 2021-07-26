@@ -1,3 +1,5 @@
+# Copyright (c) 2021 Immanuel Weber. Licensed under the MIT license (see LICENSE).
+
 from pytorch_lightning.callbacks import ProgressBar
 from pytorch_lightning.callbacks.progress import reset, convert_inf
 from tqdm.auto import tqdm
@@ -11,12 +13,10 @@ class LightProgressBar(ProgressBar):
         super().__init__(refresh_rate, process_position)
 
     def init_predict_tqdm(self) -> tqdm:
-        """Override this to customize the tqdm bar for predicting."""
         bar = tqdm(disable=True)
         return bar
 
     def init_validation_tqdm(self) -> tqdm:
-        """Override this to customize the tqdm bar for validation."""
         bar = tqdm(disable=True)
         return bar
 
