@@ -2,7 +2,6 @@
 
 import random
 import time
-from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -36,63 +35,29 @@ def improvement_styler(df):
 
 
 class ProgressPrinter(Callback):
-    # NOTE: since lightning introduced changes to the callback order on_epoch_* is useless
-    # they are called prior and after each dataset cycle of train, val and test
-    # this is the reason for the somehow akward use of callbacks
     def __init__(
-        self,
-        highlight_best: bool = True,
-        console: bool = False,
-        python_logger=None,
-        silent=False,
+        self, highlight_best: bool = True, console: bool = False, python_logger=None
     ):
         self.highlight_best = highlight_best
         self.console = console
         self.python_logger = python_logger
         self.metrics = []
-        self.best_epoch = {"loss": np.inf, "val_loss": np.inf, "epoch": -1}
+        self.best_epoch = {"loss": np.inf, "val_loss": np.inf}
         self.last_time = 0
         self.display_obj = None
-        self.is_training = False
-        self.silent = silent
-
-    def on_train_start(self, trainer, pl_module: LightningModule) -> None:
-        self.is_training = True
-
-    def on_train_end(self, trainer, pl_module: LightningModule) -> None:
-        self.is_training = False
 
     def on_train_epoch_start(self, trainer, pl_module: LightningModule) -> None:
         self.last_time = time.time()
 
     def on_train_epoch_end(self, trainer, pl_module: LightningModule, outputs) -> None:
-        if trainer.val_dataloaders is None:
-            self.collect_metrics(trainer)
-            if not self.silent:
-                self.print(trainer)
+        self.print(trainer)
 
-    def on_validation_batch_start(
-        self,
-        trainer,
-        pl_module: LightningModule,
-        batch: Any,
-        batch_idx: int,
-        dataloader_idx: int,
-    ) -> None:
-        if trainer.train_dataloader is None:
-            self.last_time = time.time()
-
-    def on_validation_epoch_end(self, trainer, pl_module: LightningModule) -> None:
-        if self.is_training:
-            self.collect_metrics(trainer)
-            if not self.silent:
-                self.print(trainer)
-
-    def collect_metrics(self, trainer):
-        raw_metrics = trainer.callback_metrics.copy()
+    def print(self, trainer) -> None:
+        raw_metrics = trainer.logged_metrics.copy()
         metrics = {
             "epoch": trainer.current_epoch,
-            "loss": float(trainer.train_loop.running_loss.mean()),
+            # TODO: no mean loss available for in logged metrics, better way?!
+            "loss": float(trainer.progress_bar_dict["loss"]),
         }
 
         ignored_metrics = ["loss", "train_loss", "train_loss_epoch"]
@@ -122,8 +87,6 @@ class ProgressPrinter(Callback):
         elapsed_time = now - self.last_time
         metrics["time"] = format_time(elapsed_time)
         self.metrics.append(metrics)
-
-    def print(self, trainer) -> None:
         metrics_df = pd.DataFrame.from_records(self.metrics)
         if not self.console:
             # https://stackoverflow.com/questions/49239476/hide-a-pandas-column-while-using-style-apply
@@ -157,11 +120,7 @@ class ProgressPrinter(Callback):
                 print(f"{last_row.name:>{pad}}/{trainer.max_epochs}: {metrics}")
 
     def static_print(self, verbose: bool = True) -> pd.DataFrame:
-        if len(self.metrics):
-            last_epoch = self.metrics[-1]
-        else:
-            last_epoch = self.best_epoch
-        metrics_df = pd.DataFrame.from_records([self.best_epoch, last_epoch])
+        metrics_df = pd.DataFrame.from_records([self.best_epoch, self.metrics[-1]])
         metrics_df.index = ["best", "last"]
         if verbose:
             display(metrics_df, display_id=43 + random.randint(0, 1e6))
