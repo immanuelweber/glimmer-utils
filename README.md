@@ -4,5 +4,8 @@ Small library of useful stuff to work with [pytorch](https://pytorch.org/) and [
 
 Install with
 ```bash
-pip install -e GLIMMER-UTILS_DIR
+
+git clone https://github.com/immanuelweber/glimmer-utils.git
+
+pip install -e glimmer-utils
 ```
