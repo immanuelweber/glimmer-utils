@@ -19,7 +19,12 @@ from .lightning_derived import get_lrs, get_scheduler_names
 
 class ProgressPlotter(Callback):
     def __init__(
-        self, highlight_best=True, show_extra_losses=True, show_steps=True, show_lr=True
+        self,
+        highlight_best: bool = True,
+        show_extra_losses: bool = True,
+        show_steps: bool = True,
+        show_lr: bool = True,
+        silent: bool = False,
     ):
         self.highlight_best = highlight_best
         self.best_of = "val"  # not implemented
@@ -35,6 +40,7 @@ class ProgressPlotter(Callback):
         self.lrs = defaultdict(list)
         self.lr_color = plt.cm.viridis(0.5)
         self.show_steps = show_steps
+        self.silent = silent
 
     def on_train_start(self, trainer, pl_module: LightningModule) -> None:
         self.scheduler_names = get_scheduler_names(trainer.lr_schedulers)
@@ -61,7 +67,8 @@ class ProgressPlotter(Callback):
         self, trainer, pl_module: LightningModule, outputs: Any
     ) -> None:
         self.collect_metrics(trainer)
-        self.update_plot(trainer, self.highlight_best, self.show_lr, self.show_steps)
+        if not self.silent:
+            self.update_plot(trainer, self.highlight_best, self.show_lr, self.show_steps)
 
     def collect_metrics(self, trainer):
         val_loss = None
