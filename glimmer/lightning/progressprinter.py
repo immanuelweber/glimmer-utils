@@ -36,7 +36,11 @@ def improvement_styler(df):
 
 class ProgressPrinter(Callback):
     def __init__(
-        self, highlight_best: bool = True, console: bool = False, python_logger=None
+        self,
+        highlight_best: bool = True,
+        console: bool = False,
+        python_logger=None,
+        silent: bool = False,
     ):
         self.highlight_best = highlight_best
         self.console = console
@@ -45,12 +49,14 @@ class ProgressPrinter(Callback):
         self.best_epoch = {"loss": np.inf, "val_loss": np.inf}
         self.last_time = 0
         self.display_obj = None
+        self.silent = silent
 
     def on_train_epoch_start(self, trainer, pl_module: LightningModule) -> None:
         self.last_time = time.time()
 
     def on_train_epoch_end(self, trainer, pl_module: LightningModule, outputs) -> None:
-        self.print(trainer)
+        if not self.silent:
+            self.print(trainer)
 
     def print(self, trainer) -> None:
         raw_metrics = trainer.logged_metrics.copy()
@@ -120,7 +126,7 @@ class ProgressPrinter(Callback):
                 print(f"{last_row.name:>{pad}}/{trainer.max_epochs}: {metrics}")
 
     def static_print(self, verbose: bool = True) -> pd.DataFrame:
-        metrics_df = pd.DataFrame.from_records([self.best_epoch, self.metrics[-1]])
+        metrics_df = pd.DataFrame.from_records([self.best_epoch, self.metrics[-1] if len(self.metrics) else self.best_epoch])
         metrics_df.index = ["best", "last"]
         if verbose:
             display(metrics_df, display_id=43 + random.randint(0, 1e6))
