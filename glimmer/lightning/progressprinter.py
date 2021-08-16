@@ -46,7 +46,7 @@ class ProgressPrinter(Callback):
         self.console = console
         self.python_logger = python_logger
         self.metrics = []
-        self.best_epoch = {"loss": np.inf, "val_loss": np.inf}
+        self.best_epoch = {"loss": np.inf, "val_loss": np.inf, "epoch": -1}
         self.last_time = 0
         self.display_obj = None
         self.silent = silent
