@@ -66,7 +66,7 @@ class ProgressPrinter(Callback):
             "loss": float(trainer.progress_bar_dict["loss"]),
         }
 
-        ignored_metrics = ["loss", "train_loss", "train_loss_epoch"]
+        ignored_metrics = ["loss", "train_loss", "train_loss_epoch", "epoch"]
         for m in ignored_metrics:
             if m in raw_metrics:
                 raw_metrics.pop(m)
@@ -75,7 +75,6 @@ class ProgressPrinter(Callback):
             metrics["val_loss"] = float(raw_metrics.pop("val_loss"))
         elif "val_loss_epoch" in raw_metrics:
             metrics["val_loss"] = float(raw_metrics.pop("val_loss_epoch"))
-
         for key, value in raw_metrics.items():
             if key.endswith("_epoch"):
                 metrics[key[6:]] = float(value)

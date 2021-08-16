@@ -73,9 +73,10 @@ class ProgressPlotter(Callback):
     def collect_metrics(self, trainer):
         val_loss = None
         raw_metrics = trainer.logged_metrics.copy()
-        if "loss" in raw_metrics:
-            # NOTE: we use the progressbar loss value
-            raw_metrics.pop("loss")
+        ignored_metrics = ["loss", "epoch"]
+        for m in ignored_metrics:
+            if m in raw_metrics:
+                raw_metrics.pop(m)
         if "val_loss" in raw_metrics:
             val_loss = float(raw_metrics.pop("val_loss"))
         elif "val_loss_epoch" in raw_metrics:
