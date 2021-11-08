@@ -63,12 +63,12 @@ class ProgressPlotter(Callback):
     def on_train_epoch_start(self, trainer, pl_module) -> None:
         return super().on_train_epoch_start(trainer, pl_module)
 
-    def on_train_epoch_end(
-        self, trainer, pl_module: LightningModule, outputs: Any
-    ) -> None:
+    def on_train_epoch_end(self, trainer, pl_module: LightningModule) -> None:
         self.collect_metrics(trainer)
         if not self.silent:
-            self.update_plot(trainer, self.highlight_best, self.show_lr, self.show_steps)
+            self.update_plot(
+                trainer, self.highlight_best, self.show_lr, self.show_steps
+            )
 
     def collect_metrics(self, trainer):
         val_loss = None

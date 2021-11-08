@@ -54,7 +54,7 @@ class ProgressPrinter(Callback):
     def on_train_epoch_start(self, trainer, pl_module: LightningModule) -> None:
         self.last_time = time.time()
 
-    def on_train_epoch_end(self, trainer, pl_module: LightningModule, outputs) -> None:
+    def on_train_epoch_end(self, trainer, pl_module: LightningModule) -> None:
         self.collect_metrics(trainer)
         if not self.silent:
             self.print(trainer)
