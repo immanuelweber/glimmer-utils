@@ -1,14 +1,16 @@
 # Copyright (c) 2021 Immanuel Weber. Licensed under the MIT license (see LICENSE).
 
-from pytorch_lightning.callbacks import ProgressBar
-from pytorch_lightning.callbacks.progress import reset, convert_inf
+try:
+    from pytorch_lightning.callbacks import TQDMProgressBar
+except ImportError:
+    from pytorch_lightning.callbacks import ProgressBar as TQDMProgressBar
 from tqdm.auto import tqdm
 
 import math
 from .utils import get_max_epochs
 
 
-class LightProgressBar(ProgressBar):
+class LightProgressBar(TQDMProgressBar):
     def __init__(self, refresh_rate: int = 1, process_position: int = 0):
         super().__init__(refresh_rate, process_position)
 
@@ -32,4 +34,4 @@ class LightProgressBar(ProgressBar):
 
     def on_test_start(self, trainer, pl_module):
         super().on_test_start(trainer, pl_module)
-        reset(self.test_progress_bar, convert_inf(self.total_test_batches))
+        self.test_progress_bar.reset(total=self.total_test_batches)
