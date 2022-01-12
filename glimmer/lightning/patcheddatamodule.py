@@ -34,6 +34,7 @@ class PatchedDataModule(pl.LightningDataModule):
         num_workers: int = 0,
         collate_fn=None,
         persistent_workers: bool = False,
+        test_batch_size: Optional[int] = None,
     ):
         r"""
         Create an instance from torch.utils.data.Dataset.
@@ -47,8 +48,9 @@ class PatchedDataModule(pl.LightningDataModule):
                 data will be loaded in the main process. Number of CPUs available.
 
         """
+        test_batch_size = test_batch_size if test_batch_size else batch_size
 
-        def dataloader(ds, shuffle=False, collate_fn=None, persistent_workers=False):
+        def dataloader(ds, batch_size, shuffle=False, collate_fn=None, persistent_workers=False):
             return DataLoader(
                 ds,
                 batch_size=batch_size,
@@ -64,6 +66,7 @@ class PatchedDataModule(pl.LightningDataModule):
                 return {
                     key: dataloader(
                         ds,
+                        batch_size,
                         shuffle=True,
                         collate_fn=collate_fn,
                         persistent_workers=persistent_workers,
@@ -74,6 +77,7 @@ class PatchedDataModule(pl.LightningDataModule):
                 return [
                     dataloader(
                         ds,
+                        batch_size,
                         shuffle=True,
                         collate_fn=collate_fn,
                         persistent_workers=persistent_workers,
@@ -82,6 +86,7 @@ class PatchedDataModule(pl.LightningDataModule):
                 ]
             return dataloader(
                 train_dataset,
+                batch_size,
                 shuffle=True,
                 collate_fn=collate_fn,
                 persistent_workers=persistent_workers,
@@ -91,12 +96,13 @@ class PatchedDataModule(pl.LightningDataModule):
             if isinstance(val_dataset, Sequence):
                 return [
                     dataloader(
-                        ds, collate_fn=collate_fn, persistent_workers=persistent_workers
+                        ds, batch_size, collate_fn=collate_fn, persistent_workers=persistent_workers
                     )
                     for ds in val_dataset
                 ]
             return dataloader(
                 val_dataset,
+                batch_size,
                 collate_fn=collate_fn,
                 persistent_workers=persistent_workers,
             )
@@ -105,12 +111,13 @@ class PatchedDataModule(pl.LightningDataModule):
             if isinstance(test_dataset, Sequence):
                 return [
                     dataloader(
-                        ds, collate_fn=collate_fn, persistent_workers=persistent_workers
+                        ds, test_batch_size, collate_fn=collate_fn, persistent_workers=persistent_workers
                     )
                     for ds in test_dataset
                 ]
             return dataloader(
                 test_dataset,
+                test_batch_size,
                 collate_fn=collate_fn,
                 persistent_workers=persistent_workers,
             )
