@@ -53,9 +53,8 @@ class ProgressPlotter(Callback):
         outputs: Any,
         batch: Any,
         batch_idx: int,
-        dataloader_idx: int,
     ) -> None:
-        self.train_loss.append(float(trainer.progress_bar_dict["loss"]))
+        self.train_loss.append(float(trainer.callback_metrics["loss"]))
         lrs = get_lrs(trainer.lr_schedulers, self.scheduler_names, "step")
         for k, v in lrs.items():
             self.lrs[k].append(v)

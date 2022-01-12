@@ -2,6 +2,7 @@
 
 import random
 import time
+from functools import partial
 
 import numpy as np
 import pandas as pd
@@ -17,19 +18,18 @@ def format_time(t):
     return f"{h}:{m:02d}:{s:02d}"
 
 
-def improvement_styler(df):
+def improvement_styler(df, metric="loss"):
     # https://stackoverflow.com/questions/50220200/conditional-styling-in-pandas-using-other-columns
     worse_color = "color: red"
     better_color = "color: black"
-    loss_entry = "val_loss" if "val_loss" in df else "loss"
-    mask = df[loss_entry].diff() > 0
+    mask = df[metric].diff() > 0
 
     # DataFrame with same index and columns names as original filled empty strings
     styled_df = pd.DataFrame(better_color, index=df.index, columns=df.columns)
     styled_df.loc[mask] = worse_color
 
-    min_loss = df[loss_entry].min()
-    mask = df[loss_entry] == min_loss
+    min_loss = df[metric].min()
+    mask = df[metric] == min_loss
     styled_df.loc[mask] = "font-weight: bold"
     return styled_df
 
@@ -37,12 +37,14 @@ def improvement_styler(df):
 class ProgressPrinter(Callback):
     def __init__(
         self,
-        highlight_best: bool = True,
+        highlight_improvements: bool = True,
+        improvement_metric: str = "loss",
         console: bool = False,
         python_logger=None,
         silent: bool = False,
     ):
-        self.highlight_best = highlight_best
+        self.highlight_improvements = highlight_improvements
+        self.improvement_metric = improvement_metric
         self.console = console
         self.python_logger = python_logger
         self.metrics = []
@@ -63,7 +65,7 @@ class ProgressPrinter(Callback):
         metrics = {
             "epoch": trainer.current_epoch,
             # TODO: no mean loss available for in logged metrics, better way?!
-            "loss": float(trainer.progress_bar_dict["loss"]),
+            "loss": float(trainer.callback_metrics["loss"]),
         }
 
         raw_metrics = trainer.logged_metrics.copy()
@@ -99,8 +101,10 @@ class ProgressPrinter(Callback):
         metrics_df = pd.DataFrame.from_records(self.metrics)
         if not self.console:
             # https://stackoverflow.com/questions/49239476/hide-a-pandas-column-while-using-style-apply
-            if self.highlight_best:
-                metrics_df = metrics_df.style.apply(improvement_styler, axis=None)
+            if self.highlight_improvements:
+                metrics_df = metrics_df.style.apply(
+                    partial(improvement_styler, metric=self.improvement_metric), axis=None
+                )
                 metrics_df = metrics_df.hide_index()
             if not self.display_obj:
                 rand_id = random.randint(0, 1e6)
