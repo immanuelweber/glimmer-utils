@@ -105,7 +105,7 @@ class ProgressPrinter(Callback):
                 metrics_df = metrics_df.style.apply(
                     partial(improvement_styler, metric=self.improvement_metric), axis=None
                 )
-                metrics_df = metrics_df.hide_index()
+                metrics_df = metrics_df.hide(axis="index")
             if not self.display_obj:
                 rand_id = random.randint(0, 1e6)
                 self.display_obj = display(metrics_df, display_id=42 + rand_id)
