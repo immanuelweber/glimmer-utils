@@ -1,4 +1,4 @@
-# Copyright (c) 2021-2022 Immanuel Weber. Licensed under the MIT license (see LICENSE).
+# Copyright (c) 2021 - 2022 Immanuel Weber. Licensed under the MIT license (see LICENSE).
 
 def get_num_training_batches(trainer):
     if (
