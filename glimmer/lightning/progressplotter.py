@@ -1,6 +1,7 @@
 # Copyright (c) 2021 - 2022 Immanuel Weber. Licensed under the MIT license (see LICENSE).
 
 import random
+import uuid
 from collections import defaultdict
 from typing import Any
 
@@ -35,7 +36,8 @@ class ProgressPlotter(Callback):
         self.extra_metrics = defaultdict(list)
         self.extra_style = "--"
         self.steps = []
-        self.did = None
+        self.plot_display = None
+        self.plot_id = str(uuid.uuid4())
         self.show_lr = show_lr
         self.lrs = defaultdict(list)
         self.lr_color = plt.cm.viridis(0.5)
@@ -43,7 +45,7 @@ class ProgressPlotter(Callback):
         self.silent = silent
 
     def on_train_start(self, trainer, pl_module: LightningModule) -> None:
-        self.scheduler_names = get_scheduler_names(trainer.lr_schedulers)
+        self.scheduler_names = get_scheduler_names(trainer.lr_scheduler_configs)
         self.steps_per_epoch = trainer.num_training_batches
 
     def on_train_batch_end(
@@ -55,7 +57,7 @@ class ProgressPlotter(Callback):
         batch_idx: int,
     ) -> None:
         self.train_loss.append(float(trainer.callback_metrics["loss"]))
-        lrs = get_lrs(trainer.lr_schedulers, self.scheduler_names, "step")
+        lrs = get_lrs(trainer.lr_scheduler_configs, self.scheduler_names, "step")
         for k, v in lrs.items():
             self.lrs[k].append(v)
 
@@ -100,11 +102,10 @@ class ProgressPlotter(Callback):
             max_steps = trainer.max_epochs * trainer.num_training_batches
         self.static_plot(ax, show_lr, highlight_best, show_steps, max_steps=max_steps)
 
-        if self.did:
-            self.did.update(fig)
+        if self.plot_display:
+            self.plot_display.update(fig)
         else:
-            rand_id = random.randint(0, 1e6)
-            self.did = display(fig, display_id=23 + rand_id)
+            self.plot_display = display(fig, display_id="progressplotter-" + self.plot_id)
 
     def static_plot(
         self,

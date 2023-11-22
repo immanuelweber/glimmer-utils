@@ -28,10 +28,10 @@ class LightProgressBar(TQDMProgressBar):
 
     def on_train_epoch_start(self, trainer, pl_module):
         super().on_train_epoch_start(trainer, pl_module)
-        self.main_progress_bar.set_description(
+        self.train_progress_bar.set_description(
             f"Epoch {trainer.current_epoch + 1}/{self.max_epochs}"
         )
 
     def on_test_start(self, trainer, pl_module):
         super().on_test_start(trainer, pl_module)
-        self.test_progress_bar.reset(total=self.total_test_batches)
+        # self.test_progress_bar.reset(total=self.total_test_batches)

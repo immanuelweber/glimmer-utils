@@ -1,7 +1,8 @@
-# Copyright (c) 2021 - 2022 Immanuel Weber. Licensed under the MIT license (see LICENSE).
+# Copyright (c) 2021 - 2023 Immanuel Weber. Licensed under the MIT license (see LICENSE).
 
 import random
 import time
+import uuid
 from functools import partial
 
 import numpy as np
@@ -48,9 +49,10 @@ class ProgressPrinter(Callback):
         self.console = console
         self.python_logger = python_logger
         self.metrics = []
-        self.best_epoch = {"loss": np.inf, "val_loss": np.inf, "epoch": -1}
+        self.best_epoch = {"loss": np.inf, "val/loss": np.inf, "epoch": -1}
         self.last_time = 0
-        self.display_obj = None
+        self.table_display = None
+        self.table_id = "progressprinter-" + str(uuid.uuid4())
         self.silent = silent
 
     def on_train_epoch_start(self, trainer, pl_module: LightningModule) -> None:
@@ -73,20 +75,20 @@ class ProgressPrinter(Callback):
         for m in ignored_metrics:
             if m in raw_metrics:
                 raw_metrics.pop(m)
-        if "val_loss" in raw_metrics:
-            metrics["val_loss"] = float(raw_metrics.pop("val_loss"))
-        elif "val_loss_epoch" in raw_metrics:
-            metrics["val_loss"] = float(raw_metrics.pop("val_loss_epoch"))
-        if "val_loss_step" in raw_metrics:
-            raw_metrics.pop("val_loss_step")
+        if "val/loss" in raw_metrics:
+            metrics["val/loss"] = float(raw_metrics.pop("val/loss"))
+        elif "val/loss_epoch" in raw_metrics:
+            metrics["val/loss"] = float(raw_metrics.pop("val/loss_epoch"))
+        if "val/loss_step" in raw_metrics:
+            raw_metrics.pop("val/loss_step")
         for key, value in raw_metrics.items():
             if key.endswith("_epoch"):
                 metrics[key[6:]] = float(value)
             elif not key.endswith("_step"):
                 metrics[key] = float(value)
 
-        if "val_loss" in metrics:
-            if metrics["val_loss"] < self.best_epoch["val_loss"]:
+        if "val/loss" in metrics:
+            if metrics["val/loss"] < self.best_epoch["val/loss"]:
                 self.best_epoch = metrics
         else:
             if metrics["loss"] < self.best_epoch["loss"]:
@@ -97,39 +99,44 @@ class ProgressPrinter(Callback):
         metrics["time"] = format_time(elapsed_time)
         self.metrics.append(metrics)
 
-    def print(self, trainer) -> None:
+    def __print_jupyter(self, trainer) -> None:
         metrics_df = pd.DataFrame.from_records(self.metrics)
-        if not self.console:
-            # https://stackoverflow.com/questions/49239476/hide-a-pandas-column-while-using-style-apply
-            if self.highlight_improvements:
-                metrics_df = metrics_df.style.apply(
-                    partial(improvement_styler, metric=self.improvement_metric), axis=None
-                )
-                metrics_df = metrics_df.hide(axis="index")
-            if not self.display_obj:
-                rand_id = random.randint(0, 1e6)
-                self.display_obj = display(metrics_df, display_id=42 + rand_id)
-            else:
-                self.display_obj.update(metrics_df)
+        # https://stackoverflow.com/questions/49239476/hide-a-pandas-column-while-using-style-apply
+        if self.highlight_improvements:
+            partial_styler = partial(improvement_styler, metric=self.improvement_metric)
+            metrics_df = metrics_df.style.apply(partial_styler, axis=None)
+            metrics_df = metrics_df.hide(axis="index")
+
+        if not self.table_display:
+            self.table_display = display(metrics_df, display_id=self.table_id)
         else:
-            last_row = metrics_df.iloc[-1]
+            self.table_display.update(metrics_df)
 
-            metrics = {index: last_row[index] for index in last_row.index}
+    def __print_console(self, trainer) -> None:
+        metrics_df = pd.DataFrame.from_records(self.metrics)
+        last_row = metrics_df.iloc[-1]
+        metrics = {index: last_row[index] for index in last_row.index}
 
-            def __format(val):
-                return f"{val:.4f}" if isinstance(val, float) else val
+        def __format(val):
+            return f"{val:.4f}" if isinstance(val, float) else val
 
-            metrics = {key: __format(val) for key, val in metrics.items()}
-            metrics = ", ".join(
-                [f"{key}: {val}" for key, val in metrics.items() if key != "epoch"]
+        metrics = {key: __format(val) for key, val in metrics.items()}
+        metrics = ", ".join(
+            [f"{key}: {val}" for key, val in metrics.items() if key != "epoch"]
+        )
+        pad = len(str(trainer.max_epochs))
+        if self.python_logger:
+            self.python_logger.info(
+                f"{last_row.name:>{pad}}/{trainer.max_epochs}: {metrics}"
             )
-            pad = len(str(trainer.max_epochs))
-            if self.python_logger:
-                self.python_logger.info(
-                    f"{last_row.name:>{pad}}/{trainer.max_epochs}: {metrics}"
-                )
-            else:
-                print(f"{last_row.name:>{pad}}/{trainer.max_epochs}: {metrics}")
+        else:
+            print(f"{last_row.name:>{pad}}/{trainer.max_epochs}: {metrics}")
+
+    def print(self, trainer) -> None:
+        if not self.console:
+            self.__print_jupyter(trainer)
+        else:
+            self.__print_console(trainer)
 
     def static_print(self, verbose: bool = True) -> pd.DataFrame:
         metrics_df = pd.DataFrame.from_records(
