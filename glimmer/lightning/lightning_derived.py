@@ -18,11 +18,11 @@
 def get_scheduler_names(schedulers):
     names = []
     for scheduler in schedulers:
-        sch = scheduler["scheduler"]
-        if scheduler["name"] is not None:
-            name = scheduler["name"]
+        sch = scheduler.scheduler
+        if scheduler.name is not None:
+            name = scheduler.name
         else:
-            opt_name = "lr-" + sch.optimizer.__class__.__name__
+            opt_name = "lr-" + sch.optimizer.__class__.__name__ + "-" + sch.__class__.__name__
             i, name = 1, opt_name
             # Multiple scheduler of the same type
             while True:
@@ -43,14 +43,14 @@ def get_lrs(schedulers, scheduler_names, interval):
     latest_stat = {}
 
     for name, scheduler in zip(scheduler_names, schedulers):
-        if scheduler["interval"] == interval or interval == "any":
-            opt = scheduler["scheduler"].optimizer
+        if scheduler.interval == interval or interval == "any":
+            opt = scheduler.scheduler.optimizer
             param_groups = opt.param_groups
             for i, pg in enumerate(param_groups):
                 suffix = f"/pg{i + 1}" if len(param_groups) > 1 else ""
                 lr = {f"{name}{suffix}": pg.get("lr")}
                 latest_stat.update(lr)
         else:
-            print(f"warning: interval {scheduler['interval']} not supported yet.")
+            print(f"warning: interval {scheduler.interval} not supported yet.")
 
     return latest_stat
