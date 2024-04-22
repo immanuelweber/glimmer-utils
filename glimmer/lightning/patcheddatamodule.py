@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Modifications copyright (C) 2021 - 2022 Immanuel Weber
+# Modifications Copyright (c) 2018 - 2024 Immanuel Weber
 
 
 import pytorch_lightning as pl
