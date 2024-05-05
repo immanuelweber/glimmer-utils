@@ -22,17 +22,19 @@ class ProgressPlotter(Callback):
     def __init__(
         self,
         highlight_best: bool = True,
-        show_extra_losses: bool = True,
+        show_sub_losses: bool = True,
+        show_extra_metrics: bool = True,
         show_steps: bool = True,
         show_lr: bool = True,
         silent: bool = False,
     ):
         self.highlight_best = highlight_best
         self.best_of = "val"  # not implemented
-        self.show_extra_losses = show_extra_losses
-        self.metrics = []
+        self.show_sub_losses = show_sub_losses
+        self.show_extra_metrics = show_extra_metrics
         self.train_loss = []
         self.val_loss = []
+        self.sub_losses = defaultdict(list)
         self.extra_metrics = defaultdict(list)
         self.extra_style = "--"
         self.steps = []
@@ -74,10 +76,8 @@ class ProgressPlotter(Callback):
     def collect_metrics(self, trainer):
         val_loss = None
         raw_metrics = trainer.logged_metrics.copy()
-        ignored_metrics = ["loss", "epoch"]
-        for m in ignored_metrics:
-            if m in raw_metrics:
-                raw_metrics.pop(m)
+        raw_metrics.pop("epoch", None)
+        raw_metrics.pop("loss", None)
         if "val_loss" in raw_metrics:
             val_loss = float(raw_metrics.pop("val_loss"))
         elif "val_loss_epoch" in raw_metrics:
@@ -90,7 +90,10 @@ class ProgressPlotter(Callback):
         for key, value in raw_metrics.items():
             if isinstance(value, torch.Tensor):
                 value = value.cpu()
-            self.extra_metrics[key].append(value)
+            if "loss" in key:
+                self.sub_losses[key].append(value)
+            else:
+                self.extra_metrics[key].append(value)
 
     def update_plot(self, trainer, highlight_best, show_lr, show_steps):
         fig, ax = plt.subplots()
@@ -126,19 +129,40 @@ class ProgressPlotter(Callback):
             step_ax.set_xlabel("")
 
         step_ax.plot(self.train_loss, label="loss")
-        ax.set_xlabel("epoch")
-        ax.set_xlim([0, max_steps / self.steps_per_epoch])
+        train_sub_losses = {}
+        val_sub_losses = {}
+        if len(self.sub_losses) and self.show_sub_losses:
+            train_sub_losses.update(
+                {
+                    key: values
+                    for key, values in self.sub_losses.items()
+                    if "val/" not in key
+                }
+            )
 
-        if self.val_loss:
-            ph = step_ax.plot(self.steps, self.val_loss, label="val_loss")
-            if highlight_best:
-                best_epoch = np.argmin(self.val_loss)
-                best_step = (best_epoch + 1) * self.steps_per_epoch
-                best_loss = self.val_loss[best_epoch]
-                step_ax.plot(best_step, best_loss, "o", c=ph[0].get_color())
+            val_sub_losses.update(
+                {
+                    key: values
+                    for key, values in self.sub_losses.items()
+                    if "val/" in key
+                }
+            )
+        for key, values in train_sub_losses.items():
+            step_ax.plot(self.steps, values, label=key)
+        loss_colors = [line.get_color() for line in step_ax.get_lines()]
+        for (key, values), color in zip(val_sub_losses.items(), loss_colors):
+            step_ax.plot(self.steps, values, "--", c=color, label=key)
+
+        # if self.val_loss:
+        #     ph = step_ax.plot(self.steps, self.val_loss, label="val_loss")
+        #     if highlight_best:
+        #         best_epoch = np.argmin(self.val_loss)
+        #         best_step = (best_epoch + 1) * self.steps_per_epoch
+        #         best_loss = self.val_loss[best_epoch]
+        #         step_ax.plot(best_step, best_loss, "o", c=ph[0].get_color())
+
         lines, labels = step_ax.get_legend_handles_labels()
-
-        if len(self.extra_metrics) and self.show_extra_losses:
+        if len(self.extra_metrics) and self.show_extra_metrics:
             extra_ax = step_ax.twinx()
             extra_ax.set_ylabel("extra metrics")
             for key in sorted(self.extra_metrics.keys()):
@@ -156,4 +180,8 @@ class ProgressPlotter(Callback):
                 lr_ax.plot(lrs, c=self.lr_color, label=key)
             lr_ax.yaxis.label.set_color(self.lr_color)
 
+
+        ax.set_xlabel("epoch")
+        ax.set_xlim([0, max_steps / self.steps_per_epoch])
+        ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
         step_ax.legend(lines, labels, loc=0)
