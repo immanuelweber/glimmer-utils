@@ -1,15 +1,14 @@
-# Copyright (c) 2021 - 2023 Immanuel Weber. Licensed under the MIT license (see LICENSE).
+# Copyright (c) 2021 - 2024 Immanuel Weber. Licensed under the MIT license (see LICENSE).
 
-import random
 import uuid
 from collections import defaultdict
-from typing import Any
+from typing import Any, Dict, List
 
 import numpy as np
 import torch
 from IPython.display import display
 from matplotlib import pyplot as plt
-from pytorch_lightning import LightningModule
+from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.callbacks import Callback
 
 from .lightning_derived import get_lrs, get_scheduler_names
@@ -18,13 +17,18 @@ from .lightning_derived import get_lrs, get_scheduler_names
 # https://stackoverflow.com/questions/9103166/multiple-axis-in-matplotlib-with-different-scales
 
 
+def ld_to_dl(lst: List[Dict]) -> Dict:
+    # list of dicts to dict of lists
+    return {key: [dic[key] for dic in lst] for key in lst[0]}
+
+
 class ProgressPlotter(Callback):
     def __init__(
         self,
         highlight_best: bool = True,
         show_sub_losses: bool = True,
         show_extra_metrics: bool = True,
-        show_steps: bool = True,
+        show_epochs: bool = True,
         show_lr: bool = True,
         silent: bool = False,
     ):
@@ -32,70 +36,81 @@ class ProgressPlotter(Callback):
         self.best_of = "val"  # not implemented
         self.show_sub_losses = show_sub_losses
         self.show_extra_metrics = show_extra_metrics
-        self.train_loss = []
-        self.val_loss = []
-        self.sub_losses = defaultdict(list)
-        self.extra_metrics = defaultdict(list)
         self.extra_style = "--"
-        self.steps = []
         self.plot_display = None
         self.plot_id = str(uuid.uuid4())
         self.show_lr = show_lr
         self.lrs = defaultdict(list)
-        self.lr_color = plt.cm.viridis(0.5)
-        self.show_steps = show_steps
+        self.lr_color = "black"
+        self.show_epochs = show_epochs
         self.silent = silent
 
-    def on_train_start(self, trainer, pl_module: LightningModule) -> None:
+        self.train_metrics = []
+        self.validation_metrics = []
+        self.extra_metrics = []
+        self.has_been_trained = False
+
+    def on_train_start(self, trainer: Trainer, pl_module: LightningModule) -> None:
         self.scheduler_names = get_scheduler_names(trainer.lr_scheduler_configs)
-        self.steps_per_epoch = trainer.num_training_batches
+        self.num_training_batches = trainer.num_training_batches
 
     def on_train_batch_end(
         self,
-        trainer,
+        trainer: Trainer,
         pl_module: LightningModule,
         outputs: Any,
         batch: Any,
         batch_idx: int,
     ) -> None:
-        self.train_loss.append(float(trainer.callback_metrics["loss"]))
-        lrs = get_lrs(trainer.lr_scheduler_configs, self.scheduler_names, "step")
-        for k, v in lrs.items():
-            self.lrs[k].append(v)
+        current_train_metrics = {
+            name: [trainer.global_step, float(value)]
+            for name, value in trainer.callback_metrics.items()
+            if "loss" in name and "val/" not in name
+        }
+        self.train_metrics.append(current_train_metrics)
 
-    def on_train_epoch_start(self, trainer, pl_module) -> None:
-        return super().on_train_epoch_start(trainer, pl_module)
+        current_extra_metrics = {
+            name: [trainer.global_step, float(value)]
+            for name, value in trainer.callback_metrics.items()
+            if "loss" not in name and "val/" not in name
+        }
+        self.extra_metrics.append(current_extra_metrics)
+
+        lrs = get_lrs(trainer.lr_scheduler_configs, self.scheduler_names, "step")
+        for name, value in lrs.items():
+            self.lrs[name].append([trainer.global_step, float(value)])
 
     def on_train_epoch_end(self, trainer, pl_module: LightningModule) -> None:
-        self.collect_metrics(trainer)
         if not self.silent:
             self.update_plot(
-                trainer, self.highlight_best, self.show_lr, self.show_steps
+                trainer, self.highlight_best, self.show_lr, self.show_epochs
+            )
+        self.has_been_trained = True
+
+    def on_validation_end(self, trainer: Trainer, pl_module: LightningModule):
+        # NOTE: on_train_epoch_end this actually good, since this is the real end of an epoch
+        # however, on incomplete epochs this is also called, but now validation has been done
+        # so we should work with on_validation_end which only gets called after validation
+        # this prevents logging of data twice in case of incomplete epochs
+        callback_metrics = trainer.callback_metrics
+        current_validation_metrics = {
+            name: [trainer.global_step, float(value)]
+            for name, value in callback_metrics.items()
+            if "val/" in name
+        }
+        self.validation_metrics.append(current_validation_metrics)
+        current_extra_metrics = {
+            name: [trainer.global_step, float(value)]
+            for name, value in trainer.callback_metrics.items()
+            if "val/" in name and "loss" not in name
+        }
+        self.extra_metrics.append(current_extra_metrics)
+        if not trainer.training and self.has_been_trained and not self.silent:
+            self.update_plot(
+                trainer, self.highlight_best, self.show_lr, self.show_epochs
             )
 
-    def collect_metrics(self, trainer):
-        val_loss = None
-        raw_metrics = trainer.logged_metrics.copy()
-        raw_metrics.pop("epoch", None)
-        raw_metrics.pop("loss", None)
-        if "val_loss" in raw_metrics:
-            val_loss = float(raw_metrics.pop("val_loss"))
-        elif "val_loss_epoch" in raw_metrics:
-            val_loss = float(raw_metrics.pop("val_loss_epoch"))
-        if "val_loss_step" in raw_metrics:
-            raw_metrics.pop("val_loss_step")
-        if val_loss is not None:
-            self.val_loss.append(val_loss)
-        self.steps.append(trainer.global_step)
-        for key, value in raw_metrics.items():
-            if isinstance(value, torch.Tensor):
-                value = value.cpu()
-            if "loss" in key:
-                self.sub_losses[key].append(value)
-            else:
-                self.extra_metrics[key].append(value)
-
-    def update_plot(self, trainer, highlight_best, show_lr, show_steps):
+    def update_plot(self, trainer, highlight_best, show_lr, show_epochs):
         fig, ax = plt.subplots()
         plt.close(fig)
         if trainer.max_steps:
@@ -103,85 +118,126 @@ class ProgressPlotter(Callback):
             max_steps = min(trainer.max_steps, max_steps_from_epochs)
         else:
             max_steps = trainer.max_epochs * trainer.num_training_batches
-        self.static_plot(ax, show_lr, highlight_best, show_steps, max_steps=max_steps)
+        self.static_plot(ax, show_lr, highlight_best, show_epochs, max_steps=max_steps)
 
         if self.plot_display:
             self.plot_display.update(fig)
         else:
-            self.plot_display = display(fig, display_id="progressplotter-" + self.plot_id)
+            self.plot_display = display(
+                fig, display_id="progressplotter-" + self.plot_id
+            )
 
     def static_plot(
         self,
         ax=None,
         show_lr=True,
         highlight_best=False,
-        show_steps=True,
+        show_epochs=True,
         max_steps=None,
     ):
         if ax is None:
-            fig, ax = plt.subplots()
-        max_steps = max_steps if max_steps else len(self.train_loss)
-        step_ax = ax.twiny()
-        step_ax.set_xlabel("step")
-        step_ax.set_xlim(0, max_steps)
-        if not show_steps:
-            step_ax.set_xticks([])
-            step_ax.set_xlabel("")
+            _, ax = plt.subplots()
 
-        step_ax.plot(self.train_loss, label="loss")
-        train_sub_losses = {}
-        val_sub_losses = {}
-        if len(self.sub_losses) and self.show_sub_losses:
-            train_sub_losses.update(
-                {
-                    key: values
-                    for key, values in self.sub_losses.items()
-                    if "val/" not in key
-                }
+        train_metrics, validation_metrics, extra_metrics = self.get_logged_metrics()
+        max_steps = max_steps if max_steps else len(train_metrics["loss"])
+        for name, values in train_metrics.items():
+            if "loss" not in name:
+                continue
+            ax.plot(values[:, 0], values[:, 1], label=name)
+        # FIXME: better use a dict for that
+        train_colors = [line.get_color() for line in ax.get_lines()]
+
+        for (name, values), color in zip(validation_metrics.items(), train_colors):
+            if "loss" not in name:
+                continue
+            ax.plot(
+                values[:, 0],
+                values[:, 1],
+                label=name,
+                color=color,
+                linestyle="--",
+                linewidth=1,
             )
 
-            val_sub_losses.update(
-                {
-                    key: values
-                    for key, values in self.sub_losses.items()
-                    if "val/" in key
-                }
-            )
-        for key, values in train_sub_losses.items():
-            step_ax.plot(self.steps, values, label=key)
-        loss_colors = [line.get_color() for line in step_ax.get_lines()]
-        for (key, values), color in zip(val_sub_losses.items(), loss_colors):
-            step_ax.plot(self.steps, values, "--", c=color, label=key)
+        ax.set_xlabel("step")
+        ax.set_xlim(0, max_steps)
+        ax.legend()
 
-        # if self.val_loss:
-        #     ph = step_ax.plot(self.steps, self.val_loss, label="val_loss")
-        #     if highlight_best:
-        #         best_epoch = np.argmin(self.val_loss)
-        #         best_step = (best_epoch + 1) * self.steps_per_epoch
-        #         best_loss = self.val_loss[best_epoch]
-        #         step_ax.plot(best_step, best_loss, "o", c=ph[0].get_color())
-
-        lines, labels = step_ax.get_legend_handles_labels()
-        if len(self.extra_metrics) and self.show_extra_metrics:
-            extra_ax = step_ax.twinx()
-            extra_ax.set_ylabel("extra metrics")
-            for key in sorted(self.extra_metrics.keys()):
-                extra_ax.plot(
-                    self.steps, self.extra_metrics[key], self.extra_style, label=key
+        if highlight_best:
+            # TODO: make this nicer
+            if "val/loss" in validation_metrics:
+                val_loss = validation_metrics["val/loss"]
+                best_id = np.argmin(val_loss[:, 1])
+                best_step = val_loss[best_id, 0]
+                val_loss_color = "black"
+                for line in ax.get_lines():
+                    if line.get_label() == "val/loss":
+                        val_loss_color = line.get_color()
+                        break
+                ax.plot(
+                    best_step,
+                    val_loss[best_id, 1],
+                    "*",
+                    color=val_loss_color,
+                    markersize=20,
                 )
-            extra_lines, extra_labels = extra_ax.get_legend_handles_labels()
-            lines += extra_lines
-            labels += extra_labels
+
         if show_lr and len(self.lrs):
-            lr_ax = step_ax.twinx()
+            lr_ax = ax.twinx()
             lr_ax.set_ylabel("lr")
-            lr_ax.spines["right"].set_position(("outward", 60))
+            # lr_ax.spines["right"].set_position(("outward", 10))
             for key, lrs in self.lrs.items():
-                lr_ax.plot(lrs, c=self.lr_color, label=key)
+                lrs = np.array(lrs)
+                lr_ax.plot(
+                    lrs[:, 0],
+                    lrs[:, 1],
+                    color=self.lr_color,
+                    label=key,
+                    linestyle="-",
+                    linewidth=1,
+                )
             lr_ax.yaxis.label.set_color(self.lr_color)
 
+            # ensure that the lr_ax is behind the other axes
+            ax.set_zorder(lr_ax.get_zorder() + 1)
+            ax.patch.set_visible(False)
 
-        ax.set_xlabel("epoch")
-        ax.set_xlim([0, max_steps / self.steps_per_epoch])
-        ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
-        step_ax.legend(lines, labels, loc=0)
+        # lines, labels = step_ax.get_legend_handles_labels()
+        # if len(self.extra_metrics) and self.show_extra_metrics:
+        #     extra_ax = step_ax.twinx()
+        #     extra_ax.set_ylabel("extra metrics")
+        #     for key in sorted(self.extra_metrics.keys()):
+        #         extra_ax.plot(
+        #             self.steps, self.extra_metrics[key], self.extra_style, label=key
+        #         )
+        #     extra_lines, extra_labels = extra_ax.get_legend_handles_labels()
+        #     lines += extra_lines
+        #     labels += extra_labels
+
+        if show_epochs:
+            epoch_ax = ax.twiny()
+            epoch_ax.set_xlabel("epoch")
+            epoch_ax.set_xlim([0, max_steps / self.num_training_batches])
+            epoch_ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+
+    def get_logged_metrics(self):
+        def _fuse_metrics(metrics: List[Dict]):
+            if len(metrics) == 0:
+                return {}
+            metrics_values = defaultdict(list)
+            for submetrics in metrics:
+                if len(submetrics) == 0:
+                    continue
+                for name, value in submetrics.items():
+                    metrics_values[name].append(value)
+
+            metrics = {
+                name: np.array(values) for name, values in metrics_values.items()
+            }
+            return metrics
+
+        train_metrics = _fuse_metrics(self.train_metrics)
+        validation_metrics = _fuse_metrics(self.validation_metrics)
+        extra_metrics = _fuse_metrics(self.extra_metrics)
+
+        return train_metrics, validation_metrics, extra_metrics
