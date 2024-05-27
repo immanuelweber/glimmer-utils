@@ -1,3 +1,4 @@
+.amlignore*
 *.pyc
 *.egg-info
 build/
