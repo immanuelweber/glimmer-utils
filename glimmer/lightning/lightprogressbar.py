@@ -1,37 +1,51 @@
-# Copyright (c) 2021 - 2023 Immanuel Weber. Licensed under the MIT license (see LICENSE).
+# Copyright (c) 2021 - 2024 Immanuel Weber. Licensed under the MIT license (see LICENSE).
 
-try:
-    from pytorch_lightning.callbacks import TQDMProgressBar
-except ImportError:
-    from pytorch_lightning.callbacks import ProgressBar as TQDMProgressBar
-from tqdm.auto import tqdm
+import sys
+from typing import Any
 
-import math
-from .utils import get_max_epochs
+import pytorch_lightning as pl
+from pytorch_lightning.callbacks import TQDMProgressBar
+from pytorch_lightning.callbacks.progress.tqdm_progress import Tqdm
+from pytorch_lightning.trainer.states import TrainerFn
 
 
 class LightProgressBar(TQDMProgressBar):
-    def __init__(self, refresh_rate: int = 1, process_position: int = 0):
-        super().__init__(refresh_rate, process_position)
-
-    def init_predict_tqdm(self) -> tqdm:
-        bar = tqdm(disable=True)
-        return bar
-
-    def init_validation_tqdm(self) -> tqdm:
-        bar = tqdm(disable=True)
-        return bar
-
-    def on_train_start(self, trainer, pl_module):
-        super().on_train_start(trainer, pl_module)
-        self.max_epochs = math.ceil(get_max_epochs(trainer))
-
-    def on_train_epoch_start(self, trainer, pl_module):
-        super().on_train_epoch_start(trainer, pl_module)
-        self.train_progress_bar.set_description(
-            f"Epoch {trainer.current_epoch + 1}/{self.max_epochs}"
+    def init_validation_tqdm(self) -> Tqdm:
+        has_main_bar = self.trainer.state.fn != TrainerFn.VALIDATING
+        return Tqdm(
+            desc=self.validation_description,
+            position=(2 * self.process_position + has_main_bar),
+            disable=self.is_disabled,
+            leave=True,
+            dynamic_ncols=True,
+            file=sys.stdout,
+            bar_format=self.BAR_FORMAT,
         )
 
-    def on_test_start(self, trainer, pl_module):
-        super().on_test_start(trainer, pl_module)
-        # self.test_progress_bar.reset(total=self.total_test_batches)
+    def on_train_start(self, *_: Any) -> None:
+        self.val_progress_bar = None
+        super().on_train_start(*_)
+
+    def on_train_epoch_start(self, trainer: "pl.Trainer", *_: Any) -> None:
+        if self._val_progress_bar is not None:
+            self.val_progress_bar.reset()
+            self.val_progress_bar.initial = 0
+        super().on_train_epoch_start(trainer, *_)
+
+    def on_validation_start(
+        self, trainer: pl.Trainer, pl_module: pl.LightningModule
+    ) -> None:
+        if not trainer.sanity_checking and self._val_progress_bar is None:
+            self.val_progress_bar = self.init_validation_tqdm()
+
+    def on_validation_end(
+        self, trainer: pl.Trainer, pl_module: pl.LightningModule
+    ) -> None:
+        if trainer.state.fn != TrainerFn.FITTING:
+            self.val_progress_bar.close()
+        self.reset_dataloader_idx_tracker()
+        if (
+            self._train_progress_bar is not None
+            and trainer.state.fn == TrainerFn.FITTING
+        ):
+            self.train_progress_bar.set_postfix(self.get_metrics(trainer, pl_module))
