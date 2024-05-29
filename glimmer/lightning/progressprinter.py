@@ -8,8 +8,26 @@ from functools import partial
 import numpy as np
 import pandas as pd
 from IPython.display import display
-from pytorch_lightning import LightningModule
+from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.callbacks import Callback
+
+from typing import List, Dict
+from collections import defaultdict
+
+
+def fuse_samples(samples: np.ndarray):
+    """
+    Fuse samples with the same timestamp by using the latest entry.
+
+    Args:
+        samples (np.ndarray): A NumPy array with shape (n_samples, n_columns).
+
+    Returns:
+        np.ndarray: A NumPy array with shape (n_unique_samples, n_columns).
+    """
+    fused_samples_dict = {row[0]: row for row in samples}
+    fused_samples = np.array(list(fused_samples_dict.values()))
+    return fused_samples
 
 
 def format_time(t):
@@ -55,64 +73,81 @@ class ProgressPrinter(Callback):
         self.table_id = "progressprinter-" + str(uuid.uuid4())
         self.silent = silent
 
+        self.epochs = []
+        self.epochs_times = []
+        self.train_metrics = []
+        self.validation_metrics = []
+        self.extra_metrics = []
+        self.has_been_trained = False
+
     def on_train_epoch_start(self, trainer, pl_module: LightningModule) -> None:
         self.last_time = time.time()
 
     def on_train_epoch_end(self, trainer, pl_module: LightningModule) -> None:
-        self.collect_metrics(trainer)
+        now = time.time()
+        elapsed_time = now - self.last_time
+
+        current_train_metrics = {}
+        current_validation_metrics = {}
+        current_extra_metrics = {}
+
+        for name, value in trainer.callback_metrics.items():
+            float_value = float(value)
+            if "loss" in name and "val/" not in name:
+                current_train_metrics[name] = [trainer.global_step, float_value]
+            elif "loss" in name and "val/" in name:
+                current_validation_metrics[name] = [trainer.global_step, float_value]
+            elif "loss" not in name:
+                current_extra_metrics[name] = [trainer.global_step, float_value]
+
+        self.train_metrics.append(current_train_metrics)
+        self.validation_metrics.append(current_validation_metrics)
+        self.extra_metrics.append(current_extra_metrics)
+
+        self.epochs.append([trainer.global_step, trainer.current_epoch])
+        self.epochs_times.append([trainer.global_step, elapsed_time])
+
+        # self.collect_metrics(trainer)
         if not self.silent:
             self.print(trainer)
 
-    def collect_metrics(self, trainer):
-        metrics = {
-            "epoch": trainer.current_epoch,
-            # TODO: no mean loss available for in logged metrics, better way?!
-            "loss": float(trainer.callback_metrics["loss"]),
-        }
+    def on_train_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
+        self.has_been_trained = True
 
-        raw_metrics = trainer.logged_metrics.copy()
-        ignored_metrics = ["loss", "epoch"]
-        for m in ignored_metrics:
-            if m in raw_metrics:
-                raw_metrics.pop(m)
-        if "val/loss" in raw_metrics:
-            metrics["val/loss"] = float(raw_metrics.pop("val/loss"))
-        elif "val/loss_epoch" in raw_metrics:
-            metrics["val/loss"] = float(raw_metrics.pop("val/loss_epoch"))
-        if "val/loss_step" in raw_metrics:
-            raw_metrics.pop("val/loss_step")
-        for key, value in raw_metrics.items():
-            if key.endswith("_epoch"):
-                metrics[key[6:]] = float(value)
-            elif not key.endswith("_step"):
-                metrics[key] = float(value)
+    def on_validation_end(self, trainer: Trainer, pl_module: LightningModule):
+        # NOTE: on_train_epoch_end would be better, since this is the real end of an epoch
+        # however, on incomplete epochs this is also called, but no validation has been done
+        # so we should work with on_validation_end which only gets called after validation
+        # this prevents logging of data twice in case of incomplete epochs
+        if not trainer.training and self.has_been_trained and not self.silent:
 
-        if "val/loss" in metrics:
-            if metrics["val/loss"] < self.best_epoch["val/loss"]:
-                self.best_epoch = metrics
-        else:
-            if metrics["loss"] < self.best_epoch["loss"]:
-                self.best_epoch = metrics
+            current_validation_metrics = {}
+            current_extra_metrics = {}
 
-        now = time.time()
-        elapsed_time = now - self.last_time
-        metrics["time"] = format_time(elapsed_time)
-        self.metrics.append(metrics)
+            for name, value in trainer.callback_metrics.items():
+                float_value = float(value)
+                if "loss" in name and "val/" not in name:
+                    pass
+                elif "loss" in name and "val/" in name:
+                    current_validation_metrics[name] = [trainer.global_step, float_value]
+                elif "loss" not in name:
+                    current_extra_metrics[name] = [trainer.global_step, float_value]
+
+            self.validation_metrics.append(current_validation_metrics)
+            self.extra_metrics.append(current_extra_metrics)
+            self.print(trainer)
 
     def __print_jupyter(self, trainer) -> None:
-        metrics_df = pd.DataFrame.from_records(self.metrics)
-        # https://stackoverflow.com/questions/49239476/hide-a-pandas-column-while-using-style-apply
-        if self.highlight_improvements:
-            partial_styler = partial(improvement_styler, metric=self.improvement_metric)
-            metrics_df = metrics_df.style.apply(partial_styler, axis=None)
-            metrics_df = metrics_df.hide(axis="index")
+        metrics = self.static_print(verbose=False)
 
         if not self.table_display:
-            self.table_display = display(metrics_df, display_id=self.table_id)
+            self.table_display = display(metrics, display_id=self.table_id)
         else:
-            self.table_display.update(metrics_df)
+            self.table_display.update(metrics)
 
     def __print_console(self, trainer) -> None:
+        # rais exception if used
+        raise NotImplementedError("Console printing is most likely broken ATM.")
         metrics_df = pd.DataFrame.from_records(self.metrics)
         last_row = metrics_df.iloc[-1]
         metrics = {index: last_row[index] for index in last_row.index}
@@ -139,13 +174,63 @@ class ProgressPrinter(Callback):
             self.__print_console(trainer)
 
     def static_print(self, verbose: bool = True) -> pd.DataFrame:
-        metrics_df = pd.DataFrame.from_records(
-            [
-                self.best_epoch,
-                self.metrics[-1] if len(self.metrics) else self.best_epoch,
-            ]
-        )
-        metrics_df.index = ["best", "last"]
+
+        def metrics_to_dataframe(metrics: Dict):
+            metrics_df = pd.DataFrame()
+            for metric_name, data in metrics.items():
+                temp_df = pd.DataFrame(data, columns=['global_step', metric_name])
+                if metrics_df.empty:
+                    metrics_df = temp_df
+                else:
+                    metrics_df = pd.merge(metrics_df, temp_df, on='global_step', how='outer')
+            return metrics_df
+
+        train_metrics, validation_metrics, extra_metrics = self.get_logged_metrics()
+        train_metrics = metrics_to_dataframe(train_metrics)
+        validation_metrics = metrics_to_dataframe(validation_metrics)
+        extra_metrics = metrics_to_dataframe(extra_metrics)
+        metrics = pd.merge(train_metrics, validation_metrics, on='global_step', how='outer')
+        metrics = pd.merge(metrics, extra_metrics, on='global_step', how='outer')
+        metrics = metrics.sort_values(by='global_step')
+        metrics = metrics.set_index("epoch")
+        metrics = metrics.convert_dtypes()
+        metrics["time"] = metrics["time"].apply(format_time)
+
+        # https://stackoverflow.com/questions/49239476/hide-a-pandas-column-while-using-style-apply
+        if self.highlight_improvements:
+            partial_styler = partial(improvement_styler, metric=self.improvement_metric)
+            metrics = metrics.style.apply(partial_styler, axis=None)
+
         if verbose:
-            display(metrics_df, display_id=43 + random.randint(0, 1e6))
-        return metrics_df
+            display(metrics, display_id=43 + random.randint(0, int(1e6)))
+        return metrics
+    
+
+    def get_logged_metrics(self):
+
+        def _fuse_metrics(metrics: List[Dict]):
+            if len(metrics) == 0:
+                return {}
+            metrics_values = defaultdict(list)
+            for submetrics in metrics:
+                if len(submetrics) == 0:
+                    continue
+                for name, value in submetrics.items():
+                    metrics_values[name].append(value)
+
+            metrics = {
+                name: fuse_samples(np.array(values)) for name, values in metrics_values.items()
+            }
+            return metrics
+
+        train_metrics = _fuse_metrics(self.train_metrics)
+        validation_metrics = _fuse_metrics(self.validation_metrics)
+        # NOTE: epochs and times are added to extra metrics for column order 
+        # since extra metrics will come after train and validation metrics
+        extra_metrics = {
+            "epoch": np.array(self.epochs),
+            "time": np.array(self.epochs_times),
+            **_fuse_metrics(self.extra_metrics)
+        }
+
+        return train_metrics, validation_metrics, extra_metrics
