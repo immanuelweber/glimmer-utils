@@ -88,8 +88,8 @@ class ProgressPlotter(Callback):
         self.has_been_trained = True
 
     def on_validation_end(self, trainer: Trainer, pl_module: LightningModule):
-        # NOTE: on_train_epoch_end this actually good, since this is the real end of an epoch
-        # however, on incomplete epochs this is also called, but now validation has been done
+        # NOTE: on_train_epoch_end would be better, since this is the real end of an epoch
+        # however, on incomplete epochs this is also called, but no validation has been done
         # so we should work with on_validation_end which only gets called after validation
         # this prevents logging of data twice in case of incomplete epochs
         callback_metrics = trainer.callback_metrics
