@@ -61,7 +61,6 @@ class ProgressPrinter(Callback):
         python_logger=None,
         silent: bool = False,
     ):
-        # FIXME: the total of the main bar is often (way) too high
         self.highlight_improvements = highlight_improvements
         self.improvement_metric = improvement_metric
         self.console = console
