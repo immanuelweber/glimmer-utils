@@ -3,16 +3,15 @@
 import random
 import time
 import uuid
+from collections import defaultdict
 from functools import partial
+from typing import Dict, List
 
 import numpy as np
 import pandas as pd
 from IPython.display import display
 from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.callbacks import Callback
-
-from typing import List, Dict
-from collections import defaultdict
 
 
 def fuse_samples(samples: np.ndarray):
@@ -130,7 +129,10 @@ class ProgressPrinter(Callback):
                 if "loss" in name and "val/" not in name:
                     pass
                 elif "loss" in name and "val/" in name:
-                    current_validation_metrics[name] = [trainer.global_step, float_value]
+                    current_validation_metrics[name] = [
+                        trainer.global_step,
+                        float_value,
+                    ]
                 elif "loss" not in name:
                     current_extra_metrics[name] = [trainer.global_step, float_value]
 
@@ -175,15 +177,16 @@ class ProgressPrinter(Callback):
             self._print_console(trainer)
 
     def static_print(self, verbose: bool = True) -> pd.DataFrame:
-
         def metrics_to_dataframe(metrics: Dict):
             metrics_df = pd.DataFrame()
             for metric_name, data in metrics.items():
-                temp_df = pd.DataFrame(data, columns=['global_step', metric_name])
+                temp_df = pd.DataFrame(data, columns=["global_step", metric_name])
                 if metrics_df.empty:
                     metrics_df = temp_df
                 else:
-                    metrics_df = pd.merge(metrics_df, temp_df, on='global_step', how='outer')
+                    metrics_df = pd.merge(
+                        metrics_df, temp_df, on="global_step", how="outer"
+                    )
             return metrics_df
 
         train_metrics, validation_metrics, extra_metrics = self.get_logged_metrics()
@@ -192,10 +195,12 @@ class ProgressPrinter(Callback):
         extra_metrics = metrics_to_dataframe(extra_metrics)
         metrics = train_metrics
         if len(validation_metrics) > 0:
-            metrics = pd.merge(metrics, validation_metrics, on='global_step', how='outer')
+            metrics = pd.merge(
+                metrics, validation_metrics, on="global_step", how="outer"
+            )
         if len(extra_metrics) > 0:
-            metrics = pd.merge(metrics, extra_metrics, on='global_step', how='outer')
-        metrics = metrics.sort_values(by='global_step')
+            metrics = pd.merge(metrics, extra_metrics, on="global_step", how="outer")
+        metrics = metrics.sort_values(by="global_step")
         metrics = metrics.set_index("epoch")
         metrics = metrics.convert_dtypes()
         metrics["time"] = metrics["time"].apply(format_time)
@@ -203,17 +208,17 @@ class ProgressPrinter(Callback):
         # https://stackoverflow.com/questions/49239476/hide-a-pandas-column-while-using-style-apply
         if self.highlight_improvements:
             if self.improvement_metric in metrics.columns:
-                partial_styler = partial(improvement_styler, metric=self.improvement_metric)
+                partial_styler = partial(
+                    improvement_styler, metric=self.improvement_metric
+                )
                 metrics = metrics.style.apply(partial_styler, axis=None)
 
         if verbose:
             display(metrics, display_id=43 + random.randint(0, int(1e6)))
 
         return metrics
-    
 
     def get_logged_metrics(self):
-
         def _fuse_metrics(metrics: List[Dict]):
             if len(metrics) == 0:
                 return {}
@@ -225,18 +230,19 @@ class ProgressPrinter(Callback):
                     metrics_values[name].append(value)
 
             metrics = {
-                name: fuse_samples(np.array(values)) for name, values in metrics_values.items()
+                name: fuse_samples(np.array(values))
+                for name, values in metrics_values.items()
             }
             return metrics
 
         train_metrics = _fuse_metrics(self.train_metrics)
         validation_metrics = _fuse_metrics(self.validation_metrics)
-        # NOTE: epochs and times are added to extra metrics for column order 
+        # NOTE: epochs and times are added to extra metrics for column order
         # since extra metrics will come after train and validation metrics
         extra_metrics = {
             "epoch": np.array(self.epochs),
             "time": np.array(self.epochs_times),
-            **_fuse_metrics(self.extra_metrics)
+            **_fuse_metrics(self.extra_metrics),
         }
 
         return train_metrics, validation_metrics, extra_metrics
