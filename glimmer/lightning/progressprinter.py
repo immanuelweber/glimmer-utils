@@ -138,8 +138,7 @@ class ProgressPrinter(Callback):
             self.extra_metrics.append(current_extra_metrics)
             self.print(trainer)
 
-    def __print_jupyter(self, trainer) -> None:
-        # FIXME: use _ instead of __ for private methods
+    def _print_jupyter(self, trainer) -> None:
         metrics = self.static_print(verbose=False)
 
         if not self.table_display:
@@ -147,8 +146,7 @@ class ProgressPrinter(Callback):
         else:
             self.table_display.update(metrics)
 
-    def __print_console(self, trainer) -> None:
-        # FIXME: use _ instead of __ for private methods
+    def _print_console(self, trainer) -> None:
         # rais exception if used
         raise NotImplementedError("Console printing is most likely broken ATM.")
         metrics_df = pd.DataFrame.from_records(self.metrics)
@@ -172,9 +170,9 @@ class ProgressPrinter(Callback):
 
     def print(self, trainer) -> None:
         if not self.console:
-            self.__print_jupyter(trainer)
+            self._print_jupyter(trainer)
         else:
-            self.__print_console(trainer)
+            self._print_console(trainer)
 
     def static_print(self, verbose: bool = True) -> pd.DataFrame:
 
