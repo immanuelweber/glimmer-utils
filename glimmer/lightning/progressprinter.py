@@ -62,6 +62,7 @@ class ProgressPrinter(Callback):
         python_logger=None,
         silent: bool = False,
     ):
+        # FIXME: the total of the main bar is often (way) too high
         self.highlight_improvements = highlight_improvements
         self.improvement_metric = improvement_metric
         self.console = console
@@ -115,12 +116,12 @@ class ProgressPrinter(Callback):
         self.has_been_trained = True
 
     def on_validation_end(self, trainer: Trainer, pl_module: LightningModule):
-        # NOTE: on_train_epoch_end would be better, since this is the real end of an epoch
-        # however, on incomplete epochs this is also called, but no validation has been done
-        # so we should work with on_validation_end which only gets called after validation
-        # this prevents logging of data twice in case of incomplete epochs
+        # NOTE: on_train_epoch_end is the default print caller
+        # however, in case of incomplete epochs, this is also needs to be called
+        # since we call validation explicitly after training
+        # GIST: this prints a second time after an incomplete epoch, but only then
+        # and we need to collect the validation metrics actively here
         if not trainer.training and self.has_been_trained and not self.silent:
-
             current_validation_metrics = {}
             current_extra_metrics = {}
 
@@ -138,6 +139,7 @@ class ProgressPrinter(Callback):
             self.print(trainer)
 
     def __print_jupyter(self, trainer) -> None:
+        # FIXME: use _ instead of __ for private methods
         metrics = self.static_print(verbose=False)
 
         if not self.table_display:
@@ -146,6 +148,7 @@ class ProgressPrinter(Callback):
             self.table_display.update(metrics)
 
     def __print_console(self, trainer) -> None:
+        # FIXME: use _ instead of __ for private methods
         # rais exception if used
         raise NotImplementedError("Console printing is most likely broken ATM.")
         metrics_df = pd.DataFrame.from_records(self.metrics)
@@ -189,8 +192,11 @@ class ProgressPrinter(Callback):
         train_metrics = metrics_to_dataframe(train_metrics)
         validation_metrics = metrics_to_dataframe(validation_metrics)
         extra_metrics = metrics_to_dataframe(extra_metrics)
-        metrics = pd.merge(train_metrics, validation_metrics, on='global_step', how='outer')
-        metrics = pd.merge(metrics, extra_metrics, on='global_step', how='outer')
+        metrics = train_metrics
+        if len(validation_metrics) > 0:
+            metrics = pd.merge(metrics, validation_metrics, on='global_step', how='outer')
+        if len(extra_metrics) > 0:
+            metrics = pd.merge(metrics, extra_metrics, on='global_step', how='outer')
         metrics = metrics.sort_values(by='global_step')
         metrics = metrics.set_index("epoch")
         metrics = metrics.convert_dtypes()
@@ -198,11 +204,13 @@ class ProgressPrinter(Callback):
 
         # https://stackoverflow.com/questions/49239476/hide-a-pandas-column-while-using-style-apply
         if self.highlight_improvements:
-            partial_styler = partial(improvement_styler, metric=self.improvement_metric)
-            metrics = metrics.style.apply(partial_styler, axis=None)
+            if self.improvement_metric in metrics.columns:
+                partial_styler = partial(improvement_styler, metric=self.improvement_metric)
+                metrics = metrics.style.apply(partial_styler, axis=None)
 
         if verbose:
             display(metrics, display_id=43 + random.randint(0, int(1e6)))
+
         return metrics
     
 
