@@ -1,2 +1,3 @@
-from glimmer import data
-from glimmer import lightning
+"""Top-level package for Glimmer Utils."""
+
+__all__ = ["data", "lightning"]

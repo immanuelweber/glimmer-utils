@@ -1,11 +1,61 @@
-# glimmer-utils library
+# Glimmer Utils
 
-Small library of useful stuff to work with [pytorch](https://pytorch.org/) and [pytorch lightning](https://www.pytorchlightning.ai/)
+Utilities for working with [PyTorch](https://pytorch.org/) and [PyTorch Lightning](https://www.pytorchlightning.ai/).
 
-Install with
+## Features
+
+- Data collators for padding and stacking tensors
+- Lightning callbacks for progress bars, printing and plotting
+- A patched `LightningDataModule` for quick dataset usage
+
+## Installation
+
+Clone the repository and install with pip:
+
 ```bash
-
 git clone https://github.com/immanuelweber/glimmer-utils.git
+cd glimmer-utils
+pip install .
+```
 
-pip install -e glimmer-utils
+For development use the editable flag:
+
+```bash
+pip install -e .
+```
+
+The `pyproject.toml` in this repository specifies `setuptools` and `wheel`
+as build dependencies so that `pip install` works without additional setup.
+
+
+
+## Requirements
+
+Glimmer Utils requires Python 3.8 or later and a small set of third-party packages:
+
+- numpy
+- pandas
+- matplotlib
+- ipython
+- torch
+- pytorch-lightning
+
+You can install them all with:
+
+```bash
+pip install -r requirements.txt
+```
+
+## Testing
+
+Run the unit tests with:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+To verify the package compiles, run:
+
+```bash
+python -m compileall -q glimmer
 ```
