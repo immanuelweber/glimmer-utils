@@ -1,5 +1,9 @@
 # Glimmer Utils
 
+[![PyPI version](https://img.shields.io/pypi/v/glimmer.svg)](https://pypi.org/project/glimmer/)
+[![Python versions](https://img.shields.io/pypi/pyversions/glimmer.svg)](https://pypi.org/project/glimmer/)
+[![License](https://img.shields.io/github/license/immanuelweber/glimmer-utils.svg)](LICENSE)
+
 Utilities for working with [PyTorch](https://pytorch.org/) and [PyTorch Lightning](https://www.pytorchlightning.ai/).
 
 ## Features
