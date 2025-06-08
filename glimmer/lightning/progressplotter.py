@@ -1,4 +1,4 @@
-# Copyright (c) 2021 - 2024 Immanuel Weber. Licensed under the MIT license (see LICENSE).
+# Copyright (c) 2021 - 2025 Immanuel Weber. Licensed under the MIT license (see LICENSE).
 
 import uuid
 from collections import defaultdict
