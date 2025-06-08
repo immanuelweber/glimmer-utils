@@ -1,12 +1,23 @@
-import setuptools
+import pathlib
+from setuptools import setup, find_packages
 
-setuptools.setup(
+this_directory = pathlib.Path(__file__).parent
+
+with open(this_directory / "README.md", "r", encoding="utf-8") as fh:
+    long_description = fh.read()
+
+with open(this_directory / "requirements.txt") as fh:
+    requirements = [line.strip() for line in fh if line.strip() and not line.startswith('#')]
+
+setup(
     name="glimmer",
-    version="0.1",
+    version="0.2",
     author="Immanuel Weber",
-    author_email="immanuel.weber@hs-koblenz.de",
-    description="glimmer utilities libary",
-    long_description="",
+    author_email="immanuel.weber@gmail.com",
+    description="glimmer utilities library",
+    long_description=long_description,
     long_description_content_type="text/markdown",
-    packages=setuptools.find_packages(),
+    packages=find_packages(),
+    install_requires=requirements,
+    python_requires=">=3.8",
 )
