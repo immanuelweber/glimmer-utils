@@ -1,8 +1,5 @@
 """Top-level package for Glimmer Utils."""
 
-__all__ = ["data", "lightning"]
-"""Top-level package for Glimmer Utils."""
-
 try:
     from ._version import __version__
 except ImportError:
