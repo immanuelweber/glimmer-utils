@@ -2,7 +2,7 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/glimmer.svg)](https://pypi.org/project/glimmer/)
 [![Python versions](https://img.shields.io/badge/python-%3E%3D3.8-blue)](https://pypi.org/project/glimmer/)
-[![License](https://img.shields.io/github/license/immanuelweber/glimmer-utils.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 Utilities for working with [PyTorch](https://pytorch.org/) and [PyTorch Lightning](https://www.pytorchlightning.ai/).
 
