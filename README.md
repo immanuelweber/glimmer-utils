@@ -43,7 +43,7 @@ currently tagged at **v0.3.0**.
 
 ## Requirements
 
-Glimmer Utils requires Python 3.8 or later and a small set of third-party packages:
+Glimmer Utils requires Python 3.8 or later. The runtime dependencies are:
 
 - numpy
 - pandas
@@ -52,11 +52,9 @@ Glimmer Utils requires Python 3.8 or later and a small set of third-party packag
 - torch
 - pytorch-lightning
 
-You can install them all with:
-
-```bash
-pip install -r requirements.txt
-```
+These packages are listed in `pyproject.toml` and will be installed
+automatically when you install the project (see the Installation section
+above).
 
 ## Development
 
