@@ -1,8 +1,10 @@
-import sys, types
+import sys
+import types
 import unittest
 
 sys.modules.setdefault("glimmer.data", types.ModuleType("glimmer.data"))
 from glimmer.lightning import utils
+
 
 class DummyTrainer:
     def __init__(self, limit_train_batches, num_training_batches, max_epochs, max_steps=None):

@@ -15,10 +15,10 @@
 # Modifications Copyright (c) 2018 - 2025 Immanuel Weber
 
 
+from typing import Mapping, Optional, Sequence, Union
+
 import pytorch_lightning as pl
-from typing import Optional, Union, Sequence, Mapping
-from torch.utils.data import Dataset
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 
 
 class PatchedDataModule(pl.LightningDataModule):

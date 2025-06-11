@@ -1,4 +1,5 @@
-import sys, types
+import sys
+import types
 import unittest
 
 np = types.ModuleType("numpy"); np.ndarray = list; sys.modules["numpy"] = np
@@ -17,6 +18,7 @@ sys.modules["IPython.display"] = mod
 sys.modules.setdefault("glimmer.data", types.ModuleType("glimmer.data"))
 
 from glimmer.lightning import progressprinter as pp
+
 
 class ProgressPrinterTestCase(unittest.TestCase):
     def test_format_time_hours_minutes_seconds(self):

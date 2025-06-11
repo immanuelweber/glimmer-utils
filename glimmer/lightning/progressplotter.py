@@ -5,7 +5,6 @@ from collections import defaultdict
 from typing import Any, Dict, List
 
 import numpy as np
-import torch
 from IPython.display import display
 from matplotlib import pyplot as plt
 from pytorch_lightning import LightningModule, Trainer

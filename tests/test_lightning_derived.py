@@ -1,8 +1,10 @@
-import sys, types
+import sys
+import types
 import unittest
 
 sys.modules.setdefault("glimmer.data", types.ModuleType("glimmer.data"))
 from glimmer.lightning import lightning_derived as ld
+
 
 class DummyOptimizer:
     def __init__(self, lr_values):

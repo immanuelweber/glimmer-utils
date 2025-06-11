@@ -61,9 +61,12 @@ include = ["glimmer*"]
 exclude = ["tests*"]
 
 # Ruff configuration (replaces black + isort + flake8)
+# Replace the existing [tool.ruff] section with:
 [tool.ruff]
 line-length = 88
 target-version = "py38"
+
+[tool.ruff.lint]
 select = [
     "E",   # pycodestyle errors
     "W",   # pycodestyle warnings
@@ -78,11 +81,7 @@ ignore = [
     "E501",  # line too long (handled by formatter)
 ]
 
-[tool.ruff.format]
-quote-style = "double"
-indent-style = "space"
-
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 known-first-party = ["glimmer"]
 
 # MyPy configuration
