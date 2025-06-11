@@ -14,7 +14,14 @@ Utilities for working with [PyTorch](https://pytorch.org/) and [PyTorch Lightnin
 
 ## Installation
 
-Clone the repository and install with pip:
+Install the latest release from PyPI:
+
+```bash
+pip install glimmer
+```
+
+To work with the source code directly, clone the repository and install the
+package:
 
 ```bash
 git clone https://github.com/immanuelweber/glimmer-utils.git
@@ -22,14 +29,15 @@ cd glimmer-utils
 pip install .
 ```
 
-For development use the editable flag:
+For development and testing, install the optional extras in editable mode:
 
 ```bash
-pip install -e .
+pip install -e '.[dev,test]'
 ```
 
-The `pyproject.toml` in this repository specifies `setuptools` and `wheel`
-as build dependencies so that `pip install` works without additional setup.
+The `pyproject.toml` specifies all build requirements and uses
+`setuptools_scm` to derive the version from git tags. The repository is
+currently tagged at **v0.3.0**.
 
 
 
@@ -50,12 +58,20 @@ You can install them all with:
 pip install -r requirements.txt
 ```
 
-## Testing
+## Development
 
-Run the unit tests with:
+Install additional tools for linting and testing:
 
 ```bash
-python -m unittest discover -s tests -v
+pip install -e '.[dev,test]'
+```
+
+## Testing
+
+Run the unit tests with [pytest](https://docs.pytest.org/):
+
+```bash
+pytest -v
 ```
 
 To verify the package compiles, run:
