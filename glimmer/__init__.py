@@ -4,7 +4,11 @@ try:
     from ._version import __version__
 except ImportError:
     # Fallback for development installs
-    from importlib.metadata import version
-    __version__ = version("glimmer")
+    from importlib.metadata import PackageNotFoundError, version
+
+    try:
+        __version__ = version("glimmer")
+    except PackageNotFoundError:
+        __version__ = "0.0.0"
 
 __all__ = ["data", "lightning", "__version__"]
