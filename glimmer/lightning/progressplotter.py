@@ -239,4 +239,7 @@ class ProgressPlotter(Callback):
         validation_metrics = _fuse_metrics(self.validation_metrics)
         extra_metrics = _fuse_metrics(self.extra_metrics)
 
+        for key, lrs in self.lrs.items():
+            extra_metrics[key] = np.array(lrs)
+
         return train_metrics, validation_metrics, extra_metrics
