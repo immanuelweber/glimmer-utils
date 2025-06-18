@@ -4,10 +4,10 @@ import os
 import sys
 from typing import Any, Literal
 
-import lightning.pytorch as pl
-from lightning.pytorch.callbacks import TQDMProgressBar
-from lightning.pytorch.callbacks.progress.tqdm_progress import Tqdm
-from lightning.pytorch.trainer.states import TrainerFn
+import pytorch_lightning as pl
+from pytorch_lightning.callbacks import TQDMProgressBar
+from pytorch_lightning.callbacks.progress.tqdm_progress import Tqdm
+from pytorch_lightning.trainer.states import TrainerFn
 
 
 class LightProgressBar(TQDMProgressBar):
