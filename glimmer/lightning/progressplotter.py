@@ -2,7 +2,7 @@
 
 import uuid
 from collections import defaultdict
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 from IPython.display import display
@@ -16,7 +16,7 @@ from glimmer.lightning.lightning_derived import get_lrs, get_scheduler_names
 # https://stackoverflow.com/questions/9103166/multiple-axis-in-matplotlib-with-different-scales
 
 
-def ld_to_dl(lst: List[Dict]) -> Dict:
+def ld_to_dl(lst: list[dict]) -> dict:
     # list of dicts to dict of lists
     return {key: [dic[key] for dic in lst] for key in lst[0]}
 
@@ -220,7 +220,7 @@ class ProgressPlotter(Callback):
             epoch_ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
 
     def get_logged_metrics(self):
-        def _fuse_metrics(metrics: List[Dict]):
+        def _fuse_metrics(metrics: list[dict]):
             if len(metrics) == 0:
                 return {}
             metrics_values = defaultdict(list)

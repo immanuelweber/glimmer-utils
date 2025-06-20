@@ -10,7 +10,7 @@ authors = [
 ]
 description = "Utilities for working with PyTorch and PyTorch Lightning"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 license = {text = "MIT"}
 keywords = ["pytorch", "lightning", "ml", "utilities", "deep-learning"]
 classifiers = [
@@ -18,8 +18,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -61,10 +59,9 @@ include = ["glimmer*"]
 exclude = ["tests*"]
 
 # Ruff configuration (replaces black + isort + flake8)
-# Replace the existing [tool.ruff] section with:
 [tool.ruff]
 line-length = 88
-target-version = "py38"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = [
@@ -81,6 +78,8 @@ select = [
 ignore = [
     "E501",  # line too long (handled by formatter)
 ]
+fixable = ["E", "F", "I", "UP", "C4"]   # add UP & C4
+unfixable = ["F403", "F405", "B", "N"]    # keep bugbear & naming read-only
 
 [tool.ruff.lint.isort]
 known-first-party = ["glimmer"]
@@ -92,7 +91,7 @@ ban-relative-imports = "all"
 
 # MyPy configuration
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.10"
 strict = true
 ignore_missing_imports = true
 

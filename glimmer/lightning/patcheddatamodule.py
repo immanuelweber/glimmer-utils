@@ -15,7 +15,7 @@
 # Modifications Copyright (c) 2018 - 2025 Immanuel Weber
 
 
-from typing import Mapping, Optional, Sequence, Union
+from collections.abc import Mapping, Sequence
 
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader, Dataset
@@ -25,16 +25,14 @@ class PatchedDataModule(pl.LightningDataModule):
     @classmethod
     def from_datasets(
         cls,
-        train_dataset: Optional[
-            Union[Dataset, Sequence[Dataset], Mapping[str, Dataset]]
-        ] = None,
-        val_dataset: Optional[Union[Dataset, Sequence[Dataset]]] = None,
-        test_dataset: Optional[Union[Dataset, Sequence[Dataset]]] = None,
+        train_dataset: Dataset | Sequence[Dataset] | Mapping[str, Dataset] | None = None,
+        val_dataset: Dataset | Sequence[Dataset] | None = None,
+        test_dataset: Dataset | Sequence[Dataset] | None = None,
         batch_size: int = 1,
         num_workers: int = 0,
         collate_fn=None,
         persistent_workers: bool = False,
-        test_batch_size: Optional[int] = None,
+        test_batch_size: int | None = None,
     ):
         r"""
         Create an instance from torch.utils.data.Dataset.

@@ -1,6 +1,7 @@
 import sys
 import types
 import unittest
+
 np = types.ModuleType("numpy"); np.ndarray = list; sys.modules["numpy"] = np
 pd = types.ModuleType("pandas"); pd.DataFrame = type("DataFrame", (), {}); sys.modules["pandas"] = pd
 sys.modules.setdefault("glimmer.data", types.ModuleType("glimmer.data"))

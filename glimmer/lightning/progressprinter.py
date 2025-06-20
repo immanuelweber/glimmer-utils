@@ -5,7 +5,7 @@ import time
 import uuid
 from collections import defaultdict
 from functools import partial
-from typing import Dict, List, Literal
+from typing import Literal
 
 import numpy as np
 import pandas as pd
@@ -241,7 +241,7 @@ class ProgressPrinter(Callback):
             return bool(self.use_console)
 
     def static_print(self, verbose: bool = True) -> pd.DataFrame:
-        def metrics_to_dataframe(metrics: Dict):
+        def metrics_to_dataframe(metrics: dict):
             metrics_df = pd.DataFrame()
             for metric_name, data in metrics.items():
                 temp_df = pd.DataFrame(data, columns=["global_step", metric_name])
@@ -283,7 +283,7 @@ class ProgressPrinter(Callback):
         return metrics
 
     def get_logged_metrics(self):
-        def _fuse_metrics(metrics: List[Dict]):
+        def _fuse_metrics(metrics: list[dict]):
             if len(metrics) == 0:
                 return {}
             metrics_values = defaultdict(list)
