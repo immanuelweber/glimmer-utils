@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.callbacks import Callback
 
-from .lightning_derived import get_lrs, get_scheduler_names
+from glimmer.lightning.lightning_derived import get_lrs, get_scheduler_names
 
 # for multiple y axis see
 # https://stackoverflow.com/questions/9103166/multiple-axis-in-matplotlib-with-different-scales

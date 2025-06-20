@@ -1,7 +1,7 @@
 """Top-level package for Glimmer Utils."""
 
 try:
-    from ._version import __version__
+    from glimmer._version import __version__
 except ImportError:
     # Fallback for development installs
     from importlib.metadata import PackageNotFoundError, version

@@ -15,7 +15,7 @@ from pytorch_lightning.callbacks import Callback
 from rich.console import Console
 from rich.table import Table
 
-from .utils import is_console
+from glimmer.lightning.utils import is_console
 
 
 def fuse_samples(samples: np.ndarray):

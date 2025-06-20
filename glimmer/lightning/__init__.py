@@ -1,10 +1,10 @@
 """Utilities for PyTorch Lightning."""
 
 # re-export frequently used symbols for convenience
-from .lightprogressbar import LightProgressBar
-from .progressprinter import ProgressPrinter
-from .progressplotter import ProgressPlotter
-from .patcheddatamodule import PatchedDataModule
+from glimmer.lightning.lightprogressbar import LightProgressBar
+from glimmer.lightning.progressprinter import ProgressPrinter
+from glimmer.lightning.progressplotter import ProgressPlotter
+from glimmer.lightning.patcheddatamodule import PatchedDataModule
 
 __all__ = [
     "LightProgressBar",
