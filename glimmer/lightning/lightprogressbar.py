@@ -1,8 +1,7 @@
 # Copyright (c) 2021 - 2025 Immanuel Weber. Licensed under the MIT license (see LICENSE).
 
-import os
 import sys
-from typing import Any, Literal
+from typing import Any
 
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import TQDMProgressBar

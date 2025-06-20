@@ -12,8 +12,6 @@ import pandas as pd
 from IPython.display import display
 from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.callbacks import Callback
-from rich.console import Console
-from rich.table import Table
 
 from glimmer.lightning.utils import is_console
 
@@ -186,14 +184,14 @@ class ProgressPrinter(Callback):
     def _print_console(self, trainer) -> None:
         # Simple progress print without clearing screen
         train_metrics, val_metrics, extra_metrics = self.get_logged_metrics()
-        
+
         # Get latest metrics for current epoch
         latest_step = trainer.global_step
         latest_epoch = trainer.current_epoch
-        
+
         # Build progress line
         progress_parts = [f"Epoch {latest_epoch:2d}", f"Step {latest_step:4d}"]
-        
+
         # Add loss metrics
         for name, values in train_metrics.items():
             if "loss" in name and len(values) > 0:
@@ -201,7 +199,7 @@ class ProgressPrinter(Callback):
                 if len(latest_value) > 0:
                     short_name = name.replace("box_l1_loss", "L1").replace("box_giou_loss", "GIoU").replace("class_focal_loss", "Focal")
                     progress_parts.append(f"{short_name}: {latest_value[-1, 1]:.4f}")
-        
+
         # Add validation loss if available
         for name, values in val_metrics.items():
             if "loss" in name and len(values) > 0:
@@ -209,7 +207,7 @@ class ProgressPrinter(Callback):
                 if len(latest_value) > 0:
                     short_name = name.replace("val/box_l1_loss", "val_L1").replace("val/box_giou_loss", "val_GIoU").replace("val/class_focal_loss", "val_Focal").replace("val/loss", "val_loss")
                     progress_parts.append(f"{short_name}: {latest_value[-1, 1]:.4f}")
-        
+
         # Print as a single line with carriage return to overwrite
         progress_line = " | ".join(progress_parts)
         print(f"\r🚀 {progress_line}                    ", end="", flush=True)
