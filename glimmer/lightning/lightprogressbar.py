@@ -12,25 +12,7 @@ from pytorch_lightning.trainer.states import TrainerFn
 
 class LightProgressBar(TQDMProgressBar):
     """A custom Lightning progress bar with enhanced control over display behavior.
-
-    This progress bar extends the standard TQDM progress bar with additional
-    logic to automatically disable progress bars in non-interactive environments
-    like CI/CD pipelines, Azure ML, SLURM clusters, and Kubernetes.
     """
-
-    def __init__(self, progress_mode: bool | Literal["auto"] = "auto", **kwargs: Any) -> None:
-        """Initialize the LightProgressBar.
-
-        Args:
-            progress_mode: Controls progress bar display behavior.
-                - True: Force enable progress bar regardless of environment
-                - False: Force disable progress bar
-                - "auto": Automatically enable only in interactive terminals
-            **kwargs: Additional keyword arguments passed to parent TQDMProgressBar.
-        """
-        super().__init__(**kwargs)
-        self._progress_mode: bool | Literal["auto"] = progress_mode
-        self._disable_bar: bool | None = None  # will be determined once
 
     def init_validation_tqdm(self) -> Tqdm:
         """Initialize and return a TQDM progress bar for validation.
@@ -42,45 +24,16 @@ class LightProgressBar(TQDMProgressBar):
             Tqdm: Configured TQDM progress bar instance for validation tracking.
         """
         has_main_bar: bool = self.trainer.state.fn != TrainerFn.VALIDATING
-        disable_bar: bool = self.disable_progress_bar()
 
         return Tqdm(
             desc=self.validation_description,
             position=(2 * self.process_position + has_main_bar),
-            disable=disable_bar,
+            disable=self.is_disabled,
             leave=True,
-            dynamic_ncols=not disable_bar,
+            dynamic_ncols=True,
             file=sys.stdout,
-            bar_format=None if disable_bar else self.BAR_FORMAT,
+            bar_format=self.BAR_FORMAT,
         )
-
-    def disable_progress_bar(self) -> bool:
-        """Determine whether the progress bar should be disabled.
-
-        Uses cached result if available, otherwise evaluates based on progress_mode
-        and environment variables. Progress bars are automatically disabled in
-        non-interactive environments like CI/CD, Azure ML, SLURM, and Kubernetes.
-
-        Returns:
-            bool: True if progress bar should be disabled, False otherwise.
-        """
-        if self._disable_bar is not None:
-            return self._disable_bar
-
-        if isinstance(self._progress_mode, bool):
-            self._disable_bar = not self._progress_mode
-        else:  # "auto"
-            env = os.environ
-            self._disable_bar = (
-                env.get("DISABLE_PROGRESS", "0") == "1" or
-                not sys.stdout.isatty() or
-                env.get("CI") == "true" or
-                "AZUREML_RUN_TOKEN" in env or
-                "SLURM_JOB_ID" in env or
-                "KUBERNETES_SERVICE_HOST" in env
-            )
-
-        return self._disable_bar
 
     def on_train_start(self, *_: Any) -> None:
         """Called when training starts.
@@ -103,8 +56,8 @@ class LightProgressBar(TQDMProgressBar):
             *_: Additional variable arguments passed from Lightning (unused).
         """
         if self._val_progress_bar is not None:
-            self._val_progress_bar.reset()
-            self._val_progress_bar.initial = 0
+            self.val_progress_bar.reset()
+            self.val_progress_bar.initial = 0
         super().on_train_epoch_start(trainer, *_)
 
     def on_validation_start(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
