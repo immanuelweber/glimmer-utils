@@ -5,13 +5,17 @@ import time
 import uuid
 from collections import defaultdict
 from functools import partial
-from typing import Dict, List
+from typing import Dict, List, Literal
 
 import numpy as np
 import pandas as pd
 from IPython.display import display
 from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.callbacks import Callback
+from rich.console import Console
+from rich.table import Table
+
+from .utils import is_console
 
 
 def fuse_samples(samples: np.ndarray):
@@ -30,13 +34,31 @@ def fuse_samples(samples: np.ndarray):
 
 
 def format_time(t):
-    "Format `t` (in seconds) to (h):mm:ss"
+    """
+    Format `t` (in seconds) to (h):mm:ss.
+
+    Args:
+        t: Time in seconds.
+
+    Returns:
+        str: Formatted time string in (h):mm:ss format.
+    """
     t = int(t)
     h, m, s = t // 3600, (t // 60) % 60, t % 60
     return f"{h}:{m:02d}:{s:02d}"
 
 
 def improvement_styler(df, metric="loss"):
+    """
+    Style DataFrame to highlight improvements in the specified metric.
+
+    Args:
+        df: The DataFrame to style.
+        metric (str): The metric column to use for highlighting improvements.
+
+    Returns:
+        DataFrame: A styled DataFrame with colors indicating improvements.
+    """
     # https://stackoverflow.com/questions/50220200/conditional-styling-in-pandas-using-other-columns
     worse_color = "color: red"
     better_color = "color: black"
@@ -57,13 +79,26 @@ class ProgressPrinter(Callback):
         self,
         highlight_improvements: bool = True,
         improvement_metric: str = "loss",
-        console: bool = False,
+        use_console: bool | Literal["auto"] = "auto",
         python_logger=None,
         silent: bool = False,
     ):
+        """
+        Initialize the ProgressPrinter callback.
+
+        Args:
+            highlight_improvements (bool): Whether to highlight improvements in metrics.
+            improvement_metric (str): The metric to use for highlighting improvements.
+            use_console (bool | Literal["auto"]): Whether to use console output instead of Jupyter.
+                - True: Always use console output
+                - False: Always use Jupyter output
+                - "auto": Automatically detect the environment
+            python_logger: Optional Python logger to use for output.
+            silent (bool): Whether to suppress all output.
+        """
         self.highlight_improvements = highlight_improvements
         self.improvement_metric = improvement_metric
-        self.console = console
+        self.use_console = use_console
         self.python_logger = python_logger
         self.metrics = []
         self.best_epoch = {"loss": np.inf, "val/loss": np.inf, "epoch": -1}
@@ -147,33 +182,65 @@ class ProgressPrinter(Callback):
         else:
             self.table_display.update(metrics)
 
+
     def _print_console(self, trainer) -> None:
-        # rais exception if used
-        raise NotImplementedError("Console printing is most likely broken ATM.")
-        metrics_df = pd.DataFrame.from_records(self.metrics)
-        last_row = metrics_df.iloc[-1]
-        metrics = {index: last_row[index] for index in last_row.index}
+        # Simple progress print without clearing screen
+        train_metrics, val_metrics, extra_metrics = self.get_logged_metrics()
+        
+        # Get latest metrics for current epoch
+        latest_step = trainer.global_step
+        latest_epoch = trainer.current_epoch
+        
+        # Build progress line
+        progress_parts = [f"Epoch {latest_epoch:2d}", f"Step {latest_step:4d}"]
+        
+        # Add loss metrics
+        for name, values in train_metrics.items():
+            if "loss" in name and len(values) > 0:
+                latest_value = values[values[:, 0] == latest_step]
+                if len(latest_value) > 0:
+                    short_name = name.replace("box_l1_loss", "L1").replace("box_giou_loss", "GIoU").replace("class_focal_loss", "Focal")
+                    progress_parts.append(f"{short_name}: {latest_value[-1, 1]:.4f}")
+        
+        # Add validation loss if available
+        for name, values in val_metrics.items():
+            if "loss" in name and len(values) > 0:
+                latest_value = values[values[:, 0] == latest_step]
+                if len(latest_value) > 0:
+                    short_name = name.replace("val/box_l1_loss", "val_L1").replace("val/box_giou_loss", "val_GIoU").replace("val/class_focal_loss", "val_Focal").replace("val/loss", "val_loss")
+                    progress_parts.append(f"{short_name}: {latest_value[-1, 1]:.4f}")
+        
+        # Print as a single line with carriage return to overwrite
+        progress_line = " | ".join(progress_parts)
+        print(f"\r🚀 {progress_line}                    ", end="", flush=True)
 
-        def __format(val):
-            return f"{val:.4f}" if isinstance(val, float) else val
-
-        metrics = {key: __format(val) for key, val in metrics.items()}
-        metrics = ", ".join(
-            [f"{key}: {val}" for key, val in metrics.items() if key != "epoch"]
-        )
-        pad = len(str(trainer.max_epochs))
-        if self.python_logger:
-            self.python_logger.info(
-                f"{last_row.name:>{pad}}/{trainer.max_epochs}: {metrics}"
-            )
-        else:
-            print(f"{last_row.name:>{pad}}/{trainer.max_epochs}: {metrics}")
 
     def print(self, trainer) -> None:
-        if not self.console:
+        """
+        Print training progress based on the use_console setting.
+        
+        Args:
+            trainer: The PyTorch Lightning trainer instance.
+        """
+        should_use_console = self._should_use_console()
+        if not should_use_console:
             self._print_jupyter(trainer)
         else:
             self._print_console(trainer)
+
+    def _should_use_console(self) -> bool:
+        """
+        Determine whether to use console output based on the use_console setting.
+
+        Returns:
+            bool: True if console output should be used, False for Jupyter output.
+        """
+        if self.use_console == "auto":
+            # Auto-detect environment using utility function
+            return is_console()
+        else:
+            # Explicit boolean value
+            return bool(self.use_console)
 
     def static_print(self, verbose: bool = True) -> pd.DataFrame:
         def metrics_to_dataframe(metrics: Dict):
