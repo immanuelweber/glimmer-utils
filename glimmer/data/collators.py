@@ -2,12 +2,12 @@
 import torch as th
 
 
-def ld_to_dl(lst):
+def ld_to_dl(lst: list[dict]) -> dict[str, list]:
     # list of dicts to dict of lists
     return {key: [dic[key] for dic in lst] for key in lst[0]}
 
 
-def stack_n_pad_tensors(tensors):
+def stack_n_pad_tensors(tensors: list[th.Tensor]) -> th.Tensor:
     max_shape = th.as_tensor([list(tensor.shape) for tensor in tensors]).max(0)[0]
     stack_shape = [len(tensors)] + max_shape.tolist()
     stack = th.zeros(stack_shape, dtype=tensors[0].dtype, device=tensors[0].device)
@@ -18,11 +18,37 @@ def stack_n_pad_tensors(tensors):
 
 def dict_collate_fn(
     batch,
-    stackable_inputs=["image", "mask", "segmentation"],
-    stackable_targets=[],
-    tensorable_inputs=["image_id"],
-    tensorable_targets=[],
-):
+    stackable_inputs: list[str] | None = None,
+    stackable_targets: list[str] | None = None,
+    tensorable_inputs: list[str] | None = None,
+    tensorable_targets: list[str] | None = None,
+) -> list[dict[str, th.Tensor | list]]:
+    """
+    Custom collate function for batching dictionary-based datasets.
+
+    Args:
+        batch: Batch of data samples to collate.
+        stackable_inputs (list[str] | None): Keys for inputs that should be stacked and padded.
+            Defaults to ["image", "mask", "segmentation"].
+        stackable_targets (list[str] | None): Keys for targets that should be stacked and padded.
+            Defaults to empty list.
+        tensorable_inputs (list[str] | None): Keys for inputs that should be converted to tensors.
+            Defaults to ["image_id"].
+        tensorable_targets (list[str] | None): Keys for targets that should be converted to tensors.
+            Defaults to empty list.
+
+    Returns:
+        list[dict[str, th.Tensor | list]]: A list containing [inputs, targets] dictionaries.
+    """
+    if stackable_inputs is None:
+        stackable_inputs = ["image", "mask", "segmentation"]
+    if stackable_targets is None:
+        stackable_targets = []
+    if tensorable_inputs is None:
+        tensorable_inputs = ["image_id"]
+    if tensorable_targets is None:
+        tensorable_targets = []
+    
     batch = list(zip(*batch))
     inputs = ld_to_dl(batch[0])
     for k in stackable_inputs:
