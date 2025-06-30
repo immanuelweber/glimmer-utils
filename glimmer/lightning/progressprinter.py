@@ -80,6 +80,7 @@ class ProgressPrinter(Callback):
         use_console: bool | Literal["auto"] = "auto",
         python_logger=None,
         silent: bool = False,
+        table_format: bool = True,
     ):
         """
         Initialize the ProgressPrinter callback.
@@ -93,6 +94,7 @@ class ProgressPrinter(Callback):
                 - "auto": Automatically detect the environment
             python_logger: Optional Python logger to use for output.
             silent (bool): Whether to suppress all output.
+            table_format (bool): Whether to use table-style formatting for console output.
         """
         self.highlight_improvements = highlight_improvements
         self.improvement_metric = improvement_metric
@@ -104,6 +106,9 @@ class ProgressPrinter(Callback):
         self.table_display = None
         self.table_id = "progressprinter-" + str(uuid.uuid4())
         self.silent = silent
+        self.table_format = table_format
+        self.header_printed = False
+        self.column_widths = {}
 
         self.epochs = []
         self.epochs_times = []
@@ -180,18 +185,162 @@ class ProgressPrinter(Callback):
         else:
             self.table_display.update(metrics)
 
+    def _calculate_column_widths(self, trainer) -> dict[str, int]:
+        """Calculate optimal column widths for table formatting."""
+        train_metrics, val_metrics, extra_metrics = self.get_logged_metrics()
 
-    def _print_console(self, trainer) -> None:
-        # Simple progress print without clearing screen
+        # Get total epochs and steps for width calculation
+        max_epochs = trainer.max_epochs if trainer.max_epochs else 999
+        total_steps = (
+            trainer.max_steps
+            if trainer.max_steps != -1
+            else trainer.estimated_stepping_batches
+            if hasattr(trainer, "estimated_stepping_batches")
+            else 99999
+        )
+
+        # Calculate width for epoch and step columns based on max possible values
+        epoch_width = max(len("Epoch"), len(f"{max_epochs}/{max_epochs}"))
+        step_width = max(len("Step"), len(f"{total_steps}/{total_steps}"))
+
+        widths = {
+            "Epoch": epoch_width,
+            "Step": step_width,
+        }
+
+        # Calculate widths for loss metrics
+        for name, values in train_metrics.items():
+            if "loss" in name and len(values) > 0:
+                short_name = (
+                    name.replace("box_l1_loss", "L1")
+                    .replace("box_giou_loss", "GIoU")
+                    .replace("class_focal_loss", "Focal")
+                )
+                # Width is max of header name and typical value format (e.g., "2.4199")
+                widths[short_name] = max(len(short_name), 7)  # 7 chars for "2.4199 "
+
+        # Calculate widths for validation metrics
+        for name, values in val_metrics.items():
+            if "loss" in name and len(values) > 0:
+                short_name = (
+                    name.replace("val/box_l1_loss", "val_L1")
+                    .replace("val/box_giou_loss", "val_GIoU")
+                    .replace("val/class_focal_loss", "val_Focal")
+                    .replace("val/loss", "val_loss")
+                )
+                widths[short_name] = max(len(short_name), 7)  # 7 chars for "2.4199 "
+
+        return widths
+
+    def _print_table_header(self, column_widths: dict[str, int]) -> None:
+        """Print the table header with proper column alignment."""
+        header_parts = []
+        for column_name, width in column_widths.items():
+            header_parts.append(f"{column_name:>{width}}")
+
+        header_line = "  ".join(header_parts)  # 2 spaces between columns
+        print(f"🚀 {header_line}")
+
+    def _print_table_row(self, trainer, column_widths: dict[str, int]) -> None:
+        """Print a data row with proper column alignment."""
         train_metrics, val_metrics, extra_metrics = self.get_logged_metrics()
 
         # Get latest metrics for current epoch
         latest_step = trainer.global_step
         latest_epoch = trainer.current_epoch
-        
+
         # Get total epochs and steps if available
         max_epochs = trainer.max_epochs if trainer.max_epochs else "?"
-        total_steps = trainer.max_steps if trainer.max_steps != -1 else trainer.estimated_stepping_batches if hasattr(trainer, 'estimated_stepping_batches') else "?"
+        total_steps = (
+            trainer.max_steps
+            if trainer.max_steps != -1
+            else trainer.estimated_stepping_batches
+            if hasattr(trainer, "estimated_stepping_batches")
+            else "?"
+        )
+
+        # Calculate padding based on total digits
+        epoch_padding = len(str(max_epochs)) if str(max_epochs).isdigit() else 1
+        step_padding = len(str(total_steps)) if str(total_steps).isdigit() else 4
+
+        # Build row data
+        row_data = {
+            "Epoch": f"{latest_epoch + 1:>{epoch_padding}}/{max_epochs}",
+            "Step": f"{latest_step:>{step_padding}}/{total_steps}",
+        }
+
+        # Add loss metrics
+        for name, values in train_metrics.items():
+            if "loss" in name and len(values) > 0:
+                latest_value = values[values[:, 0] == latest_step]
+                if len(latest_value) > 0:
+                    short_name = (
+                        name.replace("box_l1_loss", "L1")
+                        .replace("box_giou_loss", "GIoU")
+                        .replace("class_focal_loss", "Focal")
+                    )
+                    row_data[short_name] = f"{latest_value[-1, 1]:.4f}"
+
+        # Add validation loss if available
+        for name, values in val_metrics.items():
+            if "loss" in name and len(values) > 0:
+                latest_value = values[values[:, 0] == latest_step]
+                if len(latest_value) > 0:
+                    short_name = (
+                        name.replace("val/box_l1_loss", "val_L1")
+                        .replace("val/box_giou_loss", "val_GIoU")
+                        .replace("val/class_focal_loss", "val_Focal")
+                        .replace("val/loss", "val_loss")
+                    )
+                    row_data[short_name] = f"{latest_value[-1, 1]:.4f}"
+
+        # Format row with proper alignment
+        row_parts = []
+        for column_name, width in column_widths.items():
+            value = row_data.get(column_name, "")
+            row_parts.append(f"{value:>{width}}")
+
+        row_line = "  ".join(row_parts)  # 2 spaces between columns
+        print(f"   {row_line}")  # 3 spaces to align with rocket emoji
+
+    def _print_console(self, trainer) -> None:
+        """Print progress in either table format or single-line format."""
+        if self.table_format:
+            self._print_console_table(trainer)
+        else:
+            self._print_console_single_line(trainer)
+
+    def _print_console_table(self, trainer) -> None:
+        """Print progress in table format with aligned columns."""
+        # Calculate column widths on first call
+        if not self.column_widths:
+            self.column_widths = self._calculate_column_widths(trainer)
+
+        # Print header on first call
+        if not self.header_printed:
+            self._print_table_header(self.column_widths)
+            self.header_printed = True
+
+        # Print data row
+        self._print_table_row(trainer, self.column_widths)
+
+    def _print_console_single_line(self, trainer) -> None:
+        """Print progress in single-line format (original behavior)."""
+        train_metrics, val_metrics, extra_metrics = self.get_logged_metrics()
+
+        # Get latest metrics for current epoch
+        latest_step = trainer.global_step
+        latest_epoch = trainer.current_epoch
+
+        # Get total epochs and steps if available
+        max_epochs = trainer.max_epochs if trainer.max_epochs else "?"
+        total_steps = (
+            trainer.max_steps
+            if trainer.max_steps != -1
+            else trainer.estimated_stepping_batches
+            if hasattr(trainer, "estimated_stepping_batches")
+            else "?"
+        )
 
         # Calculate padding based on total digits
         epoch_padding = len(str(max_epochs)) if str(max_epochs).isdigit() else 1
@@ -199,8 +348,8 @@ class ProgressPrinter(Callback):
 
         # Build progress line with proper padding
         progress_parts = [
-            f"Epoch {latest_epoch + 1:>{epoch_padding}}/{max_epochs}", 
-            f"Step {latest_step:>{step_padding}}/{total_steps}"
+            f"Epoch {latest_epoch + 1:>{epoch_padding}}/{max_epochs}",
+            f"Step {latest_step:>{step_padding}}/{total_steps}",
         ]
 
         # Add loss metrics
@@ -208,7 +357,11 @@ class ProgressPrinter(Callback):
             if "loss" in name and len(values) > 0:
                 latest_value = values[values[:, 0] == latest_step]
                 if len(latest_value) > 0:
-                    short_name = name.replace("box_l1_loss", "L1").replace("box_giou_loss", "GIoU").replace("class_focal_loss", "Focal")
+                    short_name = (
+                        name.replace("box_l1_loss", "L1")
+                        .replace("box_giou_loss", "GIoU")
+                        .replace("class_focal_loss", "Focal")
+                    )
                     progress_parts.append(f"{short_name}: {latest_value[-1, 1]:.4f}")
 
         # Add validation loss if available
@@ -216,18 +369,22 @@ class ProgressPrinter(Callback):
             if "loss" in name and len(values) > 0:
                 latest_value = values[values[:, 0] == latest_step]
                 if len(latest_value) > 0:
-                    short_name = name.replace("val/box_l1_loss", "val_L1").replace("val/box_giou_loss", "val_GIoU").replace("val/class_focal_loss", "val_Focal").replace("val/loss", "val_loss")
+                    short_name = (
+                        name.replace("val/box_l1_loss", "val_L1")
+                        .replace("val/box_giou_loss", "val_GIoU")
+                        .replace("val/class_focal_loss", "val_Focal")
+                        .replace("val/loss", "val_loss")
+                    )
                     progress_parts.append(f"{short_name}: {latest_value[-1, 1]:.4f}")
 
         # Print each epoch on a new line
         progress_line = " | ".join(progress_parts)
         print(f"🚀 {progress_line}")
 
-
     def print(self, trainer) -> None:
         """
         Print training progress based on the use_console setting.
-        
+
         Args:
             trainer: The PyTorch Lightning trainer instance.
         """
