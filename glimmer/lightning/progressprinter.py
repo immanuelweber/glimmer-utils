@@ -46,6 +46,30 @@ def format_time(t):
     return f"{h}:{m:02d}:{s:02d}"
 
 
+def format_duration(seconds: float) -> str:
+    """
+    Format duration in seconds to compact time format.
+
+    Args:
+        seconds: Duration in seconds.
+
+    Returns:
+        str: Formatted duration string (mm:ss or h:mm:ss).
+    """
+    if seconds < 0:
+        return "--:--"
+
+    seconds = int(seconds)
+    if seconds < 3600:  # Less than 1 hour
+        m, s = seconds // 60, seconds % 60
+        return f"{m:2d}:{s:02d}"
+    else:  # 1 hour or more
+        h = seconds // 3600
+        m = (seconds % 3600) // 60
+        s = seconds % 60
+        return f"{h}:{m:02d}:{s:02d}"
+
+
 def improvement_styler(df, metric="loss"):
     """
     Style DataFrame to highlight improvements in the specified metric.
@@ -249,6 +273,8 @@ class ProgressPrinter(Callback):
         widths = {
             "Epoch": epoch_width,
             "Step": step_width,
+            "Time": max(len("Time"), 8),  # "99:59:59" = 8 chars
+            "ETA": max(len("ETA"), 8),  # "99:59:59" = 8 chars
         }
 
         # Calculate widths for loss metrics
@@ -283,6 +309,32 @@ class ProgressPrinter(Callback):
 
         header_line = "  ".join(header_parts)  # 2 spaces between columns
         print(f"🚀 {header_line}")
+
+    def _calculate_epoch_time(self, trainer) -> float:
+        """Calculate the time taken for the current epoch."""
+        current_time = time.time()
+        return current_time - self.last_time
+
+    def _calculate_eta(self, trainer, current_epoch_time: float) -> float:
+        """Calculate estimated time to completion."""
+        max_epochs = trainer.max_epochs if trainer.max_epochs else None
+
+        if not max_epochs or max_epochs <= 0:
+            return -1  # Unknown ETA
+
+        # Calculate average time per epoch from completed epochs
+        if len(self.epochs_times) > 0:
+            completed_epoch_times = [time_data[1] for time_data in self.epochs_times]
+            avg_epoch_time = sum(completed_epoch_times) / len(completed_epoch_times)
+        else:
+            # Use current epoch time as estimate
+            avg_epoch_time = current_epoch_time
+
+        # Calculate remaining epochs (accounting for fractional progress)
+        fractional_epoch = self._calculate_fractional_epoch(trainer)
+        remaining_epochs = max_epochs - fractional_epoch
+
+        return remaining_epochs * avg_epoch_time
 
     def _print_table_row(self, trainer, column_widths: dict[str, int]) -> None:
         """Print a data row with proper column alignment."""
@@ -332,10 +384,16 @@ class ProgressPrinter(Callback):
 
         step_padding = len(str(total_steps)) if str(total_steps).isdigit() else 4
 
+        # Calculate time metrics
+        current_epoch_time = self._calculate_epoch_time(trainer)
+        eta = self._calculate_eta(trainer, current_epoch_time)
+
         # Build row data
         row_data = {
             "Epoch": f"{epoch_display:>{epoch_padding}}",
             "Step": f"{latest_step:>{step_padding}}/{total_steps}",
+            "Time": format_duration(current_epoch_time),
+            "ETA": format_duration(eta),
         }
 
         # Add loss metrics
