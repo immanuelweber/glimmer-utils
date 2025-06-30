@@ -317,17 +317,24 @@ class ProgressPrinter(Callback):
 
         # Calculate padding based on total digits (account for decimal)
         if str(max_epochs).isdigit():
-            epoch_format = f"{fractional_epoch:.1f}/{max_epochs}"
+            # Padding should account for fractional display possibility
             epoch_padding = len(f"{max_epochs - 0.1:.1f}/{max_epochs}")
         else:
-            epoch_format = f"{fractional_epoch:.1f}/{max_epochs}"
-            epoch_padding = len(epoch_format)
+            epoch_padding = len(f"99.9/{max_epochs}")
+
+        # Determine epoch display format based on whether it's fractional
+        if abs(fractional_epoch - round(fractional_epoch)) < 0.01:
+            # Complete epoch - display as integer
+            epoch_display = f"{int(round(fractional_epoch))}/{max_epochs}"
+        else:
+            # Fractional epoch - display with decimal
+            epoch_display = f"{fractional_epoch:.1f}/{max_epochs}"
 
         step_padding = len(str(total_steps)) if str(total_steps).isdigit() else 4
 
         # Build row data
         row_data = {
-            "Epoch": f"{epoch_format:>{epoch_padding}}",
+            "Epoch": f"{epoch_display:>{epoch_padding}}",
             "Step": f"{latest_step:>{step_padding}}/{total_steps}",
         }
 
