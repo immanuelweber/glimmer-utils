@@ -188,9 +188,20 @@ class ProgressPrinter(Callback):
         # Get latest metrics for current epoch
         latest_step = trainer.global_step
         latest_epoch = trainer.current_epoch
+        
+        # Get total epochs and steps if available
+        max_epochs = trainer.max_epochs if trainer.max_epochs else "?"
+        total_steps = trainer.max_steps if trainer.max_steps != -1 else trainer.estimated_stepping_batches if hasattr(trainer, 'estimated_stepping_batches') else "?"
 
-        # Build progress line
-        progress_parts = [f"Epoch {latest_epoch:2d}", f"Step {latest_step:4d}"]
+        # Calculate padding based on total digits
+        epoch_padding = len(str(max_epochs)) if str(max_epochs).isdigit() else 1
+        step_padding = len(str(total_steps)) if str(total_steps).isdigit() else 4
+
+        # Build progress line with proper padding
+        progress_parts = [
+            f"Epoch {latest_epoch + 1:>{epoch_padding}}/{max_epochs}", 
+            f"Step {latest_step:>{step_padding}}/{total_steps}"
+        ]
 
         # Add loss metrics
         for name, values in train_metrics.items():
@@ -208,9 +219,9 @@ class ProgressPrinter(Callback):
                     short_name = name.replace("val/box_l1_loss", "val_L1").replace("val/box_giou_loss", "val_GIoU").replace("val/class_focal_loss", "val_Focal").replace("val/loss", "val_loss")
                     progress_parts.append(f"{short_name}: {latest_value[-1, 1]:.4f}")
 
-        # Print as a single line with carriage return to overwrite
+        # Print each epoch on a new line
         progress_line = " | ".join(progress_parts)
-        print(f"\r🚀 {progress_line}                    ", end="", flush=True)
+        print(f"🚀 {progress_line}")
 
 
     def print(self, trainer) -> None:
