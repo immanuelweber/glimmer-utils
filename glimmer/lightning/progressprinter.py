@@ -109,6 +109,8 @@ class ProgressPrinter(Callback):
         self.table_format = table_format
         self.header_printed = False
         self.column_widths = {}
+        self.last_printed_step = None
+        self.last_printed_fractional_epoch = None
 
         self.epochs = []
         self.epochs_times = []
@@ -185,6 +187,42 @@ class ProgressPrinter(Callback):
         else:
             self.table_display.update(metrics)
 
+    def _calculate_fractional_epoch(self, trainer) -> float:
+        """Calculate fractional epoch progress based on steps within current epoch."""
+        current_epoch = trainer.current_epoch
+        global_step = trainer.global_step
+
+        # Try to determine steps per epoch
+        if hasattr(trainer, "num_training_batches") and trainer.num_training_batches:
+            steps_per_epoch = trainer.num_training_batches
+        elif (
+            hasattr(trainer.datamodule, "train_dataloader")
+            and trainer.datamodule.train_dataloader()
+        ):
+            steps_per_epoch = len(trainer.datamodule.train_dataloader())
+        elif (
+            hasattr(trainer, "estimated_stepping_batches")
+            and trainer.estimated_stepping_batches
+        ):
+            # Estimate based on total steps and max epochs
+            if trainer.max_epochs and trainer.max_epochs > 0:
+                steps_per_epoch = (
+                    trainer.estimated_stepping_batches / trainer.max_epochs
+                )
+            else:
+                steps_per_epoch = None
+        else:
+            steps_per_epoch = None
+
+        if steps_per_epoch and steps_per_epoch > 0:
+            # Calculate steps completed in current epoch
+            steps_in_current_epoch = global_step - (current_epoch * steps_per_epoch)
+            fraction = steps_in_current_epoch / steps_per_epoch
+            return current_epoch + fraction
+        else:
+            # Fallback to integer epochs if we can't calculate steps per epoch
+            return float(current_epoch + 1)
+
     def _calculate_column_widths(self, trainer) -> dict[str, int]:
         """Calculate optimal column widths for table formatting."""
         train_metrics, val_metrics, extra_metrics = self.get_logged_metrics()
@@ -200,7 +238,12 @@ class ProgressPrinter(Callback):
         )
 
         # Calculate width for epoch and step columns based on max possible values
-        epoch_width = max(len("Epoch"), len(f"{max_epochs}/{max_epochs}"))
+        # Account for fractional epochs (e.g., "99.9/100")
+        if str(max_epochs).isdigit():
+            max_epoch_str = f"{max_epochs - 0.1:.1f}/{max_epochs}"  # "99.9/100"
+        else:
+            max_epoch_str = f"{max_epochs}/{max_epochs}"
+        epoch_width = max(len("Epoch"), len(max_epoch_str))
         step_width = max(len("Step"), len(f"{total_steps}/{total_steps}"))
 
         widths = {
@@ -247,7 +290,18 @@ class ProgressPrinter(Callback):
 
         # Get latest metrics for current epoch
         latest_step = trainer.global_step
-        latest_epoch = trainer.current_epoch
+
+        # Calculate fractional epoch first (needed for comparison)
+        fractional_epoch = self._calculate_fractional_epoch(trainer)
+
+        # Check if this is a validation update (same step and fractional epoch as last printed)
+        is_validation_update = (
+            self.last_printed_step is not None
+            and self.last_printed_fractional_epoch is not None
+            and latest_step == self.last_printed_step
+            and abs(fractional_epoch - self.last_printed_fractional_epoch)
+            < 0.01  # Small epsilon for floating point comparison
+        )
 
         # Get total epochs and steps if available
         max_epochs = trainer.max_epochs if trainer.max_epochs else "?"
@@ -259,13 +313,21 @@ class ProgressPrinter(Callback):
             else "?"
         )
 
-        # Calculate padding based on total digits
-        epoch_padding = len(str(max_epochs)) if str(max_epochs).isdigit() else 1
+        # Fractional epoch already calculated above for comparison
+
+        # Calculate padding based on total digits (account for decimal)
+        if str(max_epochs).isdigit():
+            epoch_format = f"{fractional_epoch:.1f}/{max_epochs}"
+            epoch_padding = len(f"{max_epochs - 0.1:.1f}/{max_epochs}")
+        else:
+            epoch_format = f"{fractional_epoch:.1f}/{max_epochs}"
+            epoch_padding = len(epoch_format)
+
         step_padding = len(str(total_steps)) if str(total_steps).isdigit() else 4
 
         # Build row data
         row_data = {
-            "Epoch": f"{latest_epoch + 1:>{epoch_padding}}/{max_epochs}",
+            "Epoch": f"{epoch_format:>{epoch_padding}}",
             "Step": f"{latest_step:>{step_padding}}/{total_steps}",
         }
 
@@ -301,7 +363,16 @@ class ProgressPrinter(Callback):
             row_parts.append(f"{value:>{width}}")
 
         row_line = "  ".join(row_parts)  # 2 spaces between columns
-        print(f"   {row_line}")  # 3 spaces to align with rocket emoji
+
+        # Add validation update indicator if this is a validation-only update
+        if is_validation_update:
+            print(f" ↑ {row_line}")  # Use arrow to indicate validation update
+        else:
+            print(f"   {row_line}")  # 3 spaces to align with rocket emoji
+
+        # Update tracking for validation detection
+        self.last_printed_step = latest_step
+        self.last_printed_fractional_epoch = fractional_epoch
 
     def _print_console(self, trainer) -> None:
         """Print progress in either table format or single-line format."""
