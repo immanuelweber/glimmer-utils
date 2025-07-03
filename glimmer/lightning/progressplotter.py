@@ -95,7 +95,7 @@ class ProgressPlotter(Callback):
         current_validation_metrics = {
             name: [trainer.global_step, float(value)]
             for name, value in callback_metrics.items()
-            if "val/" in name
+            if "val/" in name and "loss" in name
         }
         self.validation_metrics.append(current_validation_metrics)
         current_extra_metrics = {

@@ -135,6 +135,7 @@ class ProgressPrinter(Callback):
         self.column_widths = {}
         self.last_printed_step = None
         self.last_printed_fractional_epoch = None
+        self.last_validation_metrics = {}
 
         self.epochs = []
         self.epochs_times = []
@@ -204,7 +205,7 @@ class ProgressPrinter(Callback):
             self.print(trainer)
 
     def _print_jupyter(self, trainer) -> None:
-        metrics = self.static_print(verbose=False)
+        metrics = self.static_print(trainer=trainer, verbose=False)
 
         if not self.table_display:
             self.table_display = display(metrics, display_id=self.table_id)
@@ -297,7 +298,8 @@ class ProgressPrinter(Callback):
                     .replace("val/class_focal_loss", "val_Focal")
                     .replace("val/loss", "val_loss")
                 )
-                widths[short_name] = max(len(short_name), 7)  # 7 chars for "2.4199 "
+                # Account for potential prefix asterisk on validation metrics
+                widths[short_name] = max(len(short_name), 8)  # 8 chars for "*2.4199 "
 
         return widths
 
@@ -419,7 +421,21 @@ class ProgressPrinter(Callback):
                         .replace("val/class_focal_loss", "val_Focal")
                         .replace("val/loss", "val_loss")
                     )
-                    row_data[short_name] = f"{latest_value[-1, 1]:.4f}"
+
+                    current_value = latest_value[-1, 1]
+
+                    # Check if this is a validation update and value changed
+                    if (
+                        is_validation_update
+                        and short_name in self.last_validation_metrics
+                    ):
+                        previous_value = self.last_validation_metrics[short_name]
+                        if abs(current_value - previous_value) > 1e-6:  # Value changed
+                            row_data[short_name] = f"*{current_value:.4f}"
+                        else:
+                            row_data[short_name] = f"{current_value:.4f}"
+                    else:
+                        row_data[short_name] = f"{current_value:.4f}"
 
         # Format row with proper alignment
         row_parts = []
@@ -434,6 +450,21 @@ class ProgressPrinter(Callback):
             print(f" ↑ {row_line}")  # Use arrow to indicate validation update
         else:
             print(f"   {row_line}")  # 3 spaces to align with rocket emoji
+
+        # Store current validation metrics for comparison on next validation update
+        if not is_validation_update:
+            self.last_validation_metrics = {}
+            for name, values in val_metrics.items():
+                if "loss" in name and len(values) > 0:
+                    latest_value = values[values[:, 0] == latest_step]
+                    if len(latest_value) > 0:
+                        short_name = (
+                            name.replace("val/box_l1_loss", "val_L1")
+                            .replace("val/box_giou_loss", "val_GIoU")
+                            .replace("val/class_focal_loss", "val_Focal")
+                            .replace("val/loss", "val_loss")
+                        )
+                        self.last_validation_metrics[short_name] = latest_value[-1, 1]
 
         # Update tracking for validation detection
         self.last_printed_step = latest_step
@@ -544,16 +575,16 @@ class ProgressPrinter(Callback):
             # Explicit boolean value
             return bool(self.use_console)
 
-    def static_print(self, verbose: bool = True) -> pd.DataFrame:
+    def static_print(self, trainer=None, verbose: bool = True) -> pd.DataFrame:
         def metrics_to_dataframe(metrics: dict):
             metrics_df = pd.DataFrame()
             for metric_name, data in metrics.items():
-                temp_df = pd.DataFrame(data, columns=["global_step", metric_name])
+                temp_df = pd.DataFrame(data, columns=["step", metric_name])
                 if metrics_df.empty:
                     metrics_df = temp_df
                 else:
                     metrics_df = pd.merge(
-                        metrics_df, temp_df, on="global_step", how="outer"
+                        metrics_df, temp_df, on="step", how="outer"
                     )
             return metrics_df
 
@@ -564,14 +595,77 @@ class ProgressPrinter(Callback):
         metrics = train_metrics
         if len(validation_metrics) > 0:
             metrics = pd.merge(
-                metrics, validation_metrics, on="global_step", how="outer"
+                metrics, validation_metrics, on="step", how="outer"
             )
         if len(extra_metrics) > 0:
-            metrics = pd.merge(metrics, extra_metrics, on="global_step", how="outer")
-        metrics = metrics.sort_values(by="global_step")
+            metrics = pd.merge(metrics, extra_metrics, on="step", how="outer")
+        metrics = metrics.sort_values(by="step")
+
+        # Calculate ETA for each row
+        if "time" in metrics.columns and len(self.epochs_times) > 0 and trainer:
+            max_epochs = trainer.max_epochs if trainer.max_epochs else None
+
+            # Get epoch times
+            epoch_times = [time_data[1] for time_data in self.epochs_times]
+
+            # For each row, calculate ETA based on average epoch time
+            eta_values = []
+            for _idx, row in metrics.iterrows():
+                epoch_idx = int(row.get("epoch", 0))
+                if epoch_idx > 0 and epoch_idx <= len(epoch_times) and max_epochs:
+                    # Calculate average time per epoch up to this point
+                    avg_epoch_time = sum(epoch_times[:epoch_idx]) / epoch_idx
+                    remaining_epochs = max_epochs - epoch_idx
+                    if remaining_epochs > 0:
+                        eta = remaining_epochs * avg_epoch_time
+                        eta_values.append(format_duration(eta))
+                    else:
+                        eta_values.append("--:--")
+                else:
+                    eta_values.append("--:--")
+            metrics["eta"] = eta_values
+        elif "time" in metrics.columns:
+            # No trainer or epoch times, fill with --:--
+            metrics["eta"] = "--:--"
+
+        # Reorder columns: epoch, step, time, eta, then losses
+        column_order = []
+        if "epoch" in metrics.columns:
+            column_order.append("epoch")
+        if "step" in metrics.columns:
+            column_order.append("step")
+        if "time" in metrics.columns:
+            column_order.append("time")
+        if "eta" in metrics.columns:
+            column_order.append("eta")
+
+        # Add remaining columns (losses)
+        for col in metrics.columns:
+            if col not in column_order:
+                column_order.append(col)
+
+        metrics = metrics[column_order]
+
+        # Format epoch index with max epochs if available
+        if trainer and trainer.max_epochs:
+            max_epochs = trainer.max_epochs
+            metrics["epoch"] = metrics["epoch"].apply(lambda x: f"{int(x)}/{max_epochs}")
+
+        # Format step column with max steps if available
+        if "step" in metrics.columns and trainer:
+            if trainer.max_steps != -1:
+                max_steps = trainer.max_steps
+            elif hasattr(trainer, "estimated_stepping_batches"):
+                max_steps = trainer.estimated_stepping_batches
+            else:
+                max_steps = None
+
+            if max_steps:
+                metrics["step"] = metrics["step"].apply(lambda x: f"{int(x)}/{max_steps}")
+
         metrics = metrics.set_index("epoch")
         metrics = metrics.convert_dtypes()
-        metrics["time"] = metrics["time"].apply(format_time)
+        metrics["time"] = metrics["time"].apply(format_duration)
 
         # https://stackoverflow.com/questions/49239476/hide-a-pandas-column-while-using-style-apply
         if self.highlight_improvements:
