@@ -90,3 +90,27 @@ class LightProgressBar(TQDMProgressBar):
             and trainer.state.fn == TrainerFn.FITTING
         ):
             self.train_progress_bar.set_postfix(self.get_metrics(trainer, pl_module))
+
+    def get_metrics(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> dict[str, Any]:
+        """Get metrics to display in the progress bar.
+
+        Filters the metrics to show only the main loss value, removing individual
+        loss components for a cleaner display.
+
+        Args:
+            trainer: The Lightning trainer instance.
+            pl_module: The Lightning module being trained.
+
+        Returns:
+            dict[str, Any]: Filtered metrics containing only the main loss.
+        """
+        # Get all metrics from parent implementation
+        metrics = super().get_metrics(trainer, pl_module)
+        
+        # Filter to keep only the main "loss" metric
+        filtered_metrics = {}
+        for key, value in metrics.items():
+            if key == "loss":
+                filtered_metrics[key] = value
+        
+        return filtered_metrics
