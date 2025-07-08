@@ -146,7 +146,7 @@ class ProgressPlotter(Callback):
         # FIXME: better use a dict for that
         train_colors = [line.get_color() for line in ax.get_lines()]
 
-        for (name, values), color in zip(validation_metrics.items(), train_colors):
+        for (name, values), color in zip(validation_metrics.items(), train_colors, strict=True):
             if "loss" not in name:
                 continue
             ax.plot(
