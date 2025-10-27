@@ -176,9 +176,12 @@ class ProgressPlotter(Callback):
                 ax.plot(
                     best_step,
                     val_loss[best_id, 1],
-                    "*",
-                    color=val_loss_color,
-                    markersize=20,
+                    marker="o",
+                    markerfacecolor="white",
+                    markeredgecolor=val_loss_color,
+                    markeredgewidth=2.5,
+                    markersize=10,
+                    linestyle="",
                 )
 
         if show_lr and len(self.lrs):
