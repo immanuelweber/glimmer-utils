@@ -33,6 +33,8 @@ class PatchedDataModule(pl.LightningDataModule):
         collate_fn=None,
         persistent_workers: bool = False,
         test_batch_size: int | None = None,
+        prefetch_factor: int | None = None,
+        pin_memory: bool = True,
     ):
         r"""
         Create an instance from torch.utils.data.Dataset.
@@ -44,20 +46,33 @@ class PatchedDataModule(pl.LightningDataModule):
             batch_size: Batch size to use for each dataloader. Default is 1.
             num_workers: Number of subprocesses to use for data loading. 0 means that the
                 data will be loaded in the main process. Number of CPUs available.
+            collate_fn: Optional function to collate data samples into batches.
+            persistent_workers: If True, dataloader workers will not be shut down after each epoch.
+            test_batch_size: Optional different batch size for test dataloader.
+            prefetch_factor: Number of batches loaded in advance by each worker.
+                Default is None (which uses PyTorch's default of 2 when num_workers > 0).
+            pin_memory: If True, the data loader will copy Tensors into pinned memory
+                before returning them. Default is True for better GPU performance.
 
         """
         test_batch_size = test_batch_size if test_batch_size else batch_size
 
         def dataloader(ds, batch_size, shuffle=False, collate_fn=None, persistent_workers=False):
-            return DataLoader(
-                ds,
-                batch_size=batch_size,
-                shuffle=shuffle,
-                num_workers=num_workers,
-                pin_memory=True,
-                collate_fn=collate_fn,
-                persistent_workers=persistent_workers,
-            )
+            # Build dataloader kwargs
+            dl_kwargs = {
+                'batch_size': batch_size,
+                'shuffle': shuffle,
+                'num_workers': num_workers,
+                'pin_memory': pin_memory,
+                'collate_fn': collate_fn,
+                'persistent_workers': persistent_workers,
+            }
+
+            # Add prefetch_factor only if specified and num_workers > 0
+            if prefetch_factor is not None and num_workers > 0:
+                dl_kwargs['prefetch_factor'] = prefetch_factor
+
+            return DataLoader(ds, **dl_kwargs)
 
         def train_dataloader():
             if isinstance(train_dataset, Mapping):
