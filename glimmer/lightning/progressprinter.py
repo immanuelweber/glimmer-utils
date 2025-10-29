@@ -96,7 +96,7 @@ def improvement_styler(df: pd.DataFrame, metric: str = "loss") -> pd.DataFrame:
     return styled_df
 
 
-class ProgressPrinter(Callback):  # type: ignore[misc]
+class ProgressPrinter(Callback):
     def __init__(
         self,
         highlight_improvements: bool = True,
@@ -382,7 +382,7 @@ class ProgressPrinter(Callback):  # type: ignore[misc]
         # Determine epoch display format based on whether it's fractional
         if abs(fractional_epoch - round(fractional_epoch)) < 0.01:
             # Complete epoch - display as integer
-            epoch_display = f"{int(round(fractional_epoch))}/{max_epochs}"
+            epoch_display = f"{round(fractional_epoch):.0f}/{max_epochs}"
         else:
             # Fractional epoch - display with decimal
             epoch_display = f"{fractional_epoch:.1f}/{max_epochs}"
@@ -675,12 +675,9 @@ class ProgressPrinter(Callback):  # type: ignore[misc]
         metrics["time"] = metrics["time"].apply(format_duration)
 
         # https://stackoverflow.com/questions/49239476/hide-a-pandas-column-while-using-style-apply
-        if self.highlight_improvements:
-            if self.improvement_metric in metrics.columns:
-                partial_styler = partial(
-                    improvement_styler, metric=self.improvement_metric
-                )
-                metrics = metrics.style.apply(partial_styler, axis=None)
+        if self.highlight_improvements and self.improvement_metric in metrics.columns:
+            partial_styler = partial(improvement_styler, metric=self.improvement_metric)
+            metrics = metrics.style.apply(partial_styler, axis=None)
 
         if verbose:
             display(metrics, display_id=43 + random.randint(0, int(1e6)))

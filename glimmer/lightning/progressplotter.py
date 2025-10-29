@@ -21,7 +21,7 @@ def ld_to_dl(lst: list[dict[str, Any]]) -> dict[str, list[Any]]:
     return {key: [dic[key] for dic in lst] for key in lst[0]}
 
 
-class ProgressPlotter(Callback):  # type: ignore[misc]
+class ProgressPlotter(Callback):
     def __init__(
         self,
         highlight_best: bool = True,
@@ -166,27 +166,26 @@ class ProgressPlotter(Callback):  # type: ignore[misc]
         ax.set_xlim(0, max_steps)
         ax.legend()
 
-        if highlight_best:
+        if highlight_best and "val/loss" in validation_metrics:
             # TODO: make this nicer
-            if "val/loss" in validation_metrics:
-                val_loss = validation_metrics["val/loss"]
-                best_id = np.argmin(val_loss[:, 1])
-                best_step = val_loss[best_id, 0]
-                val_loss_color = "black"
-                for line in ax.get_lines():
-                    if line.get_label() == "val/loss":
-                        val_loss_color = line.get_color()
-                        break
-                ax.plot(
-                    best_step,
-                    val_loss[best_id, 1],
-                    marker="o",
-                    markerfacecolor="white",
-                    markeredgecolor=val_loss_color,
-                    markeredgewidth=2.5,
-                    markersize=10,
-                    linestyle="",
-                )
+            val_loss = validation_metrics["val/loss"]
+            best_id = np.argmin(val_loss[:, 1])
+            best_step = val_loss[best_id, 0]
+            val_loss_color = "black"
+            for line in ax.get_lines():
+                if line.get_label() == "val/loss":
+                    val_loss_color = line.get_color()
+                    break
+            ax.plot(
+                best_step,
+                val_loss[best_id, 1],
+                marker="o",
+                markerfacecolor="white",
+                markeredgecolor=val_loss_color,
+                markeredgewidth=2.5,
+                markersize=10,
+                linestyle="",
+            )
 
         if show_lr and len(self.lrs):
             lr_ax = ax.twinx()
@@ -224,7 +223,7 @@ class ProgressPlotter(Callback):  # type: ignore[misc]
             epoch_ax = ax.twiny()
             epoch_ax.set_xlabel("epoch")
             epoch_ax.set_xlim([0, max_steps / self.num_training_batches])
-            epoch_ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))  # type: ignore[attr-defined]
+            epoch_ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
 
     def get_logged_metrics(
         self,

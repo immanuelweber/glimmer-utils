@@ -22,7 +22,7 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader, Dataset
 
 
-class PatchedDataModule(pl.LightningDataModule):  # type: ignore[misc]
+class PatchedDataModule(pl.LightningDataModule):
     @classmethod
     def from_datasets(
         cls,

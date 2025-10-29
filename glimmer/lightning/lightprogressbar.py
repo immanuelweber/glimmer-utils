@@ -9,7 +9,7 @@ from pytorch_lightning.callbacks.progress.tqdm_progress import Tqdm
 from pytorch_lightning.trainer.states import TrainerFn
 
 
-class LightProgressBar(TQDMProgressBar):  # type: ignore[misc]
+class LightProgressBar(TQDMProgressBar):
     """A custom Lightning progress bar with enhanced control over display behavior."""
 
     def init_validation_tqdm(self) -> Tqdm:

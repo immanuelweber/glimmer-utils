@@ -39,15 +39,15 @@ def is_console() -> bool:
         from IPython.core.getipython import get_ipython
 
         ipython = get_ipython()
-        if ipython is not None and ipython.__class__.__name__ in [
-            "ZMQInteractiveShell",
-            "TerminalInteractiveShell",
-        ]:
-            # We're in Jupyter/IPython
-            return False
-        else:
-            # We're in a regular terminal
-            return True
+        # Return True for console, False for Jupyter/IPython
+        return not (
+            ipython is not None
+            and ipython.__class__.__name__
+            in [
+                "ZMQInteractiveShell",
+                "TerminalInteractiveShell",
+            ]
+        )
     except ImportError:
         # IPython not available, assume console
         return True
