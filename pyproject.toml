@@ -77,6 +77,8 @@ select = [
 ]
 ignore = [
     "E501",  # line too long (handled by formatter)
+    "B905",  # zip() strict parameter (Python 3.10+, nice-to-have)
+    "E402",  # module import not at top (needed for test mocking)
 ]
 fixable = ["E", "F", "I", "UP", "C4"]   # add UP & C4
 unfixable = ["F403", "F405", "B", "N"]    # keep bugbear & naming read-only

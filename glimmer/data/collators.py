@@ -1,8 +1,10 @@
 # Copyright (c) 2018 - 2025 Immanuel Weber. Licensed under the MIT license (see LICENSE).
+from typing import Any
+
 import torch as th
 
 
-def ld_to_dl(lst: list[dict]) -> dict[str, list]:
+def ld_to_dl(lst: list[dict[str, Any]]) -> dict[str, list[Any]]:
     # list of dicts to dict of lists
     return {key: [dic[key] for dic in lst] for key in lst[0]}
 
@@ -17,12 +19,12 @@ def stack_n_pad_tensors(tensors: list[th.Tensor]) -> th.Tensor:
 
 
 def dict_collate_fn(
-    batch,
+    batch: Any,
     stackable_inputs: list[str] | None = None,
     stackable_targets: list[str] | None = None,
     tensorable_inputs: list[str] | None = None,
     tensorable_targets: list[str] | None = None,
-) -> list[dict[str, th.Tensor | list]]:
+) -> list[dict[str, th.Tensor | list[Any]]]:
     """
     Custom collate function for batching dictionary-based datasets.
 
@@ -48,7 +50,7 @@ def dict_collate_fn(
         tensorable_inputs = ["image_id"]
     if tensorable_targets is None:
         tensorable_targets = []
-    
+
     batch = list(zip(*batch))
     inputs = ld_to_dl(batch[0])
     for k in stackable_inputs:

@@ -2,8 +2,12 @@ import sys
 import types
 import unittest
 
-np = types.ModuleType("numpy"); np.ndarray = list; sys.modules["numpy"] = np
-pd = types.ModuleType("pandas"); pd.DataFrame = type("DataFrame", (), {}); sys.modules["pandas"] = pd
+np = types.ModuleType("numpy")
+np.ndarray = list
+sys.modules["numpy"] = np
+pd = types.ModuleType("pandas")
+pd.DataFrame = type("DataFrame", (), {})
+sys.modules["pandas"] = pd
 pl = types.ModuleType("pytorch_lightning")
 pl.LightningModule = type("LightningModule", (), {})
 pl.LightningDataModule = type("LightningDataModule", (), {})
@@ -25,7 +29,9 @@ torch.utils.data.Dataset = type("Dataset", (), {})
 sys.modules["pytorch_lightning"] = pl
 sys.modules["pytorch_lightning.callbacks"] = pl.callbacks
 sys.modules["pytorch_lightning.callbacks.progress"] = pl.callbacks.progress
-sys.modules["pytorch_lightning.callbacks.progress.tqdm_progress"] = pl.callbacks.progress.tqdm_progress
+sys.modules["pytorch_lightning.callbacks.progress.tqdm_progress"] = (
+    pl.callbacks.progress.tqdm_progress
+)
 sys.modules["pytorch_lightning.trainer"] = pl.trainer
 sys.modules["pytorch_lightning.trainer.states"] = pl.trainer.states
 sys.modules["torch"] = torch
@@ -50,6 +56,7 @@ class ProgressPrinterTestCase(unittest.TestCase):
 
     def test_format_time_zero(self):
         self.assertEqual(pp.format_time(0), "0:00:00")
+
 
 if __name__ == "__main__":
     unittest.main()
