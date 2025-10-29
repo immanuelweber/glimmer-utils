@@ -25,7 +25,8 @@ repos:
         args:
           - --disallow-untyped-defs        # REQUIRE type hints on functions
           - --disallow-incomplete-defs     # REQUIRE complete type hints
-          - --no-strict-optional           # Easy-going: allow None without Optional
+          - --warn-unused-ignores          # Find unnecessary type: ignore comments
+          - --warn-redundant-casts         # Find unnecessary type casts
           - --ignore-missing-imports       # Easy-going: don't complain about 3rd party
           - --allow-untyped-calls          # Easy-going: can call untyped functions
           - --no-warn-return-any           # Easy-going: don't warn about Any returns
