@@ -1,7 +1,6 @@
 # Glimmer Utils
 
-[![PyPI version](https://img.shields.io/pypi/v/glimmer.svg)](https://pypi.org/project/glimmer/)
-[![Python versions](https://img.shields.io/badge/python-%3E%3D3.8-blue)](https://pypi.org/project/glimmer/)
+[![Python versions](https://img.shields.io/badge/python-%3E%3D3.10-blue)](https://www.python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 [![CI](https://github.com/immanuelweber/glimmer-utils/workflows/CI/badge.svg)](https://github.com/immanuelweber/glimmer-utils/actions)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
@@ -16,14 +15,7 @@ Utilities for working with [PyTorch](https://pytorch.org/) and [PyTorch Lightnin
 
 ## Installation
 
-Install the latest release from PyPI:
-
-```bash
-pip install glimmer
-```
-
-To work with the source code directly, clone the repository and install the
-package:
+Clone the repository and install the package:
 
 ```bash
 git clone https://github.com/immanuelweber/glimmer-utils.git
@@ -45,7 +37,7 @@ currently tagged at **v0.3.0**.
 
 ## Requirements
 
-Glimmer Utils requires Python 3.8 or later. The runtime dependencies are:
+Glimmer Utils requires Python 3.10 or later. The runtime dependencies are:
 
 - numpy
 - pandas
