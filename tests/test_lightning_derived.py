@@ -2,8 +2,12 @@ import sys
 import types
 import unittest
 
-np = types.ModuleType("numpy"); np.ndarray = list; sys.modules["numpy"] = np
-pd = types.ModuleType("pandas"); pd.DataFrame = type("DataFrame", (), {}); sys.modules["pandas"] = pd
+np = types.ModuleType("numpy")
+np.ndarray = list
+sys.modules["numpy"] = np
+pd = types.ModuleType("pandas")
+pd.DataFrame = type("DataFrame", (), {})
+sys.modules["pandas"] = pd
 sys.modules.setdefault("glimmer.data", types.ModuleType("glimmer.data"))
 pl = types.ModuleType("pytorch_lightning")
 pl.LightningModule = type("LightningModule", (), {})
@@ -21,7 +25,9 @@ pl.trainer.states.TrainerFn = type("TrainerFn", (), {"VALIDATING": "validating"}
 sys.modules["pytorch_lightning"] = pl
 sys.modules["pytorch_lightning.callbacks"] = pl.callbacks
 sys.modules["pytorch_lightning.callbacks.progress"] = pl.callbacks.progress
-sys.modules["pytorch_lightning.callbacks.progress.tqdm_progress"] = pl.callbacks.progress.tqdm_progress
+sys.modules["pytorch_lightning.callbacks.progress.tqdm_progress"] = (
+    pl.callbacks.progress.tqdm_progress
+)
 sys.modules["pytorch_lightning.trainer"] = pl.trainer
 sys.modules["pytorch_lightning.trainer.states"] = pl.trainer.states
 sys.modules.setdefault("IPython", types.ModuleType("IPython"))
@@ -47,17 +53,20 @@ class DummyOptimizer:
     def __init__(self, lr_values):
         self.param_groups = lr_values
 
+
 class DummyScheduler:
     def __init__(self, optimizer, interval="epoch"):
         self.optimizer = optimizer
         self.__class__.__name__ = "DummyScheduler"
         self.interval = interval
 
+
 class DummyLRSchedulerConfig:
     def __init__(self, optimizer, name=None, interval="epoch"):
         self.scheduler = DummyScheduler(optimizer, interval)
         self.name = name
         self.interval = interval
+
 
 class LightningDerivedTestCase(unittest.TestCase):
     def test_get_scheduler_names_unique(self):
@@ -69,7 +78,13 @@ class LightningDerivedTestCase(unittest.TestCase):
         optim = DummyOptimizer([{"lr": 0.1}, {"lr": 0.2}])
         sched = DummyLRSchedulerConfig(optim)
         names = ld.get_scheduler_names([sched])
-        self.assertEqual(names, ["lr-DummyOptimizer-DummyScheduler/pg1", "lr-DummyOptimizer-DummyScheduler/pg2"])
+        self.assertEqual(
+            names,
+            [
+                "lr-DummyOptimizer-DummyScheduler/pg1",
+                "lr-DummyOptimizer-DummyScheduler/pg2",
+            ],
+        )
 
     def test_get_lrs_interval_filter(self):
         optim1 = DummyOptimizer([{"lr": 0.1}])
@@ -79,6 +94,7 @@ class LightningDerivedTestCase(unittest.TestCase):
         names = ld.get_scheduler_names([sched1, sched2])
         lrs = ld.get_lrs([sched1, sched2], names, interval="step")
         self.assertEqual(lrs, {"s1": 0.1})
+
 
 if __name__ == "__main__":
     unittest.main()

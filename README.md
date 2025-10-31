@@ -3,6 +3,8 @@
 [![PyPI version](https://img.shields.io/pypi/v/glimmer.svg)](https://pypi.org/project/glimmer/)
 [![Python versions](https://img.shields.io/badge/python-%3E%3D3.8-blue)](https://pypi.org/project/glimmer/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+[![CI](https://github.com/immanuelweber/glimmer-utils/workflows/CI/badge.svg)](https://github.com/immanuelweber/glimmer-utils/actions)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
 
 Utilities for working with [PyTorch](https://pytorch.org/) and [PyTorch Lightning](https://www.pytorchlightning.ai/).
 

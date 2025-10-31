@@ -1,0 +1,59 @@
+{
+  // Python configuration
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+
+  // Formatting
+  "[python]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit",
+      "source.organizeImports": "explicit"
+    }
+  },
+
+  // Ruff extension settings
+  "ruff.enable": true,
+  "ruff.lint.enable": true,
+  "ruff.format.args": [],
+  "ruff.lint.args": [],
+  "ruff.importStrategy": "fromEnvironment",
+
+  // Mypy extension settings
+  "mypy-type-checker.args": [
+    "--config-file=${workspaceFolder}/pyproject.toml"
+  ],
+  "mypy-type-checker.importStrategy": "fromEnvironment",
+
+  // Python testing
+  "python.testing.pytestEnabled": true,
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestArgs": [
+    "tests",
+    "-v"
+  ],
+
+  // File exclusions
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/*.pyc": true,
+    "**/.pytest_cache": true,
+    "**/.mypy_cache": true,
+    "**/.ruff_cache": true,
+    "**/*.egg-info": true
+  },
+
+  // File associations
+  "files.associations": {
+    "*.toml": "toml",
+    "justfile": "makefile"
+  },
+
+  // Editor settings
+  "editor.rulers": [88],
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+
+  // Git
+  "git.ignoreLimitWarning": true
+}

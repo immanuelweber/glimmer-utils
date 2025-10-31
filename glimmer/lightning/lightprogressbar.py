@@ -10,8 +10,7 @@ from pytorch_lightning.trainer.states import TrainerFn
 
 
 class LightProgressBar(TQDMProgressBar):
-    """A custom Lightning progress bar with enhanced control over display behavior.
-    """
+    """A custom Lightning progress bar with enhanced control over display behavior."""
 
     def init_validation_tqdm(self) -> Tqdm:
         """Initialize and return a TQDM progress bar for validation.
@@ -55,11 +54,13 @@ class LightProgressBar(TQDMProgressBar):
             *_: Additional variable arguments passed from Lightning (unused).
         """
         if self._val_progress_bar is not None:
-            self.val_progress_bar.reset()
-            self.val_progress_bar.initial = 0
+            self.val_progress_bar.reset()  # type: ignore[attr-defined]
+            self.val_progress_bar.initial = 0  # type: ignore[attr-defined]
         super().on_train_epoch_start(trainer, *_)
 
-    def on_validation_start(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
+    def on_validation_start(
+        self, trainer: pl.Trainer, pl_module: pl.LightningModule
+    ) -> None:
         """Called when validation starts.
 
         Initializes the validation progress bar if not in sanity checking mode
@@ -72,7 +73,9 @@ class LightProgressBar(TQDMProgressBar):
         if not trainer.sanity_checking and self._val_progress_bar is None:
             self.val_progress_bar = self.init_validation_tqdm()
 
-    def on_validation_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
+    def on_validation_end(
+        self, trainer: pl.Trainer, pl_module: pl.LightningModule
+    ) -> None:
         """Called when validation ends.
 
         Closes the validation progress bar if not in fitting mode, resets dataloader
@@ -83,7 +86,7 @@ class LightProgressBar(TQDMProgressBar):
             pl_module: The Lightning module that was validated.
         """
         if trainer.state.fn != TrainerFn.FITTING:
-            self.val_progress_bar.close()
+            self.val_progress_bar.close()  # type: ignore[attr-defined]
         self.reset_dataloader_idx_tracker()
         if (
             self._train_progress_bar is not None
@@ -91,7 +94,9 @@ class LightProgressBar(TQDMProgressBar):
         ):
             self.train_progress_bar.set_postfix(self.get_metrics(trainer, pl_module))
 
-    def get_metrics(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> dict[str, Any]:
+    def get_metrics(
+        self, trainer: pl.Trainer, pl_module: pl.LightningModule
+    ) -> dict[str, Any]:
         """Get metrics to display in the progress bar.
 
         Filters the metrics to show only the main loss value, removing individual
@@ -106,11 +111,11 @@ class LightProgressBar(TQDMProgressBar):
         """
         # Get all metrics from parent implementation
         metrics = super().get_metrics(trainer, pl_module)
-        
+
         # Filter to keep only the main "loss" metric
         filtered_metrics = {}
         for key, value in metrics.items():
             if key == "loss":
                 filtered_metrics[key] = value
-        
+
         return filtered_metrics

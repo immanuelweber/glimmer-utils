@@ -16,7 +16,7 @@ from glimmer.lightning.lightning_derived import get_lrs, get_scheduler_names
 # https://stackoverflow.com/questions/9103166/multiple-axis-in-matplotlib-with-different-scales
 
 
-def ld_to_dl(lst: list[dict]) -> dict:
+def ld_to_dl(lst: list[dict[str, Any]]) -> dict[str, list[Any]]:
     # list of dicts to dict of lists
     return {key: [dic[key] for dic in lst] for key in lst[0]}
 
@@ -30,7 +30,7 @@ class ProgressPlotter(Callback):
         show_epochs: bool = True,
         show_lr: bool = True,
         silent: bool = False,
-    ):
+    ) -> None:
         self.highlight_best = highlight_best
         self.best_of = "val"  # not implemented
         self.show_sub_losses = show_sub_losses
@@ -39,14 +39,14 @@ class ProgressPlotter(Callback):
         self.plot_display = None
         self.plot_id = str(uuid.uuid4())
         self.show_lr = show_lr
-        self.lrs = defaultdict(list)
+        self.lrs: dict[str, Any] = defaultdict(list)
         self.lr_color = "black"
         self.show_epochs = show_epochs
         self.silent = silent
 
-        self.train_metrics = []
-        self.validation_metrics = []
-        self.extra_metrics = []
+        self.train_metrics: list[dict[str, Any]] = []
+        self.validation_metrics: list[dict[str, Any]] = []
+        self.extra_metrics: list[dict[str, Any]] = []
         self.has_been_trained = False
 
     def on_train_start(self, trainer: Trainer, pl_module: LightningModule) -> None:
@@ -79,14 +79,14 @@ class ProgressPlotter(Callback):
         for name, value in lrs.items():
             self.lrs[name].append([trainer.global_step, float(value)])
 
-    def on_train_epoch_end(self, trainer, pl_module: LightningModule) -> None:
+    def on_train_epoch_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
         if not self.silent:
             self.update_plot(
                 trainer, self.highlight_best, self.show_lr, self.show_epochs
             )
         self.has_been_trained = True
 
-    def on_validation_end(self, trainer: Trainer, pl_module: LightningModule):
+    def on_validation_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
         # NOTE: on_train_epoch_end would be better, since this is the real end of an epoch
         # however, on incomplete epochs this is also called, but no validation has been done
         # so we should work with on_validation_end which only gets called after validation
@@ -109,7 +109,9 @@ class ProgressPlotter(Callback):
                 trainer, self.highlight_best, self.show_lr, self.show_epochs
             )
 
-    def update_plot(self, trainer, highlight_best, show_lr, show_epochs):
+    def update_plot(
+        self, trainer: Trainer, highlight_best: bool, show_lr: bool, show_epochs: bool
+    ) -> None:
         fig, ax = plt.subplots()
         plt.close(fig)
         if trainer.max_steps:
@@ -128,12 +130,12 @@ class ProgressPlotter(Callback):
 
     def static_plot(
         self,
-        ax=None,
-        show_lr=True,
-        highlight_best=False,
-        show_epochs=True,
-        max_steps=None,
-    ):
+        ax: Any = None,
+        show_lr: bool = True,
+        highlight_best: bool = False,
+        show_epochs: bool = True,
+        max_steps: int | None = None,
+    ) -> None:
         if ax is None:
             _, ax = plt.subplots()
 
@@ -146,7 +148,9 @@ class ProgressPlotter(Callback):
         # FIXME: better use a dict for that
         train_colors = [line.get_color() for line in ax.get_lines()]
 
-        for (name, values), color in zip(validation_metrics.items(), train_colors, strict=True):
+        for (name, values), color in zip(
+            validation_metrics.items(), train_colors, strict=True
+        ):
             if "loss" not in name:
                 continue
             ax.plot(
@@ -162,27 +166,26 @@ class ProgressPlotter(Callback):
         ax.set_xlim(0, max_steps)
         ax.legend()
 
-        if highlight_best:
+        if highlight_best and "val/loss" in validation_metrics:
             # TODO: make this nicer
-            if "val/loss" in validation_metrics:
-                val_loss = validation_metrics["val/loss"]
-                best_id = np.argmin(val_loss[:, 1])
-                best_step = val_loss[best_id, 0]
-                val_loss_color = "black"
-                for line in ax.get_lines():
-                    if line.get_label() == "val/loss":
-                        val_loss_color = line.get_color()
-                        break
-                ax.plot(
-                    best_step,
-                    val_loss[best_id, 1],
-                    marker="o",
-                    markerfacecolor="white",
-                    markeredgecolor=val_loss_color,
-                    markeredgewidth=2.5,
-                    markersize=10,
-                    linestyle="",
-                )
+            val_loss = validation_metrics["val/loss"]
+            best_id = np.argmin(val_loss[:, 1])
+            best_step = val_loss[best_id, 0]
+            val_loss_color = "black"
+            for line in ax.get_lines():
+                if line.get_label() == "val/loss":
+                    val_loss_color = line.get_color()
+                    break
+            ax.plot(
+                best_step,
+                val_loss[best_id, 1],
+                marker="o",
+                markerfacecolor="white",
+                markeredgecolor=val_loss_color,
+                markeredgewidth=2.5,
+                markersize=10,
+                linestyle="",
+            )
 
         if show_lr and len(self.lrs):
             lr_ax = ax.twinx()
@@ -222,21 +225,23 @@ class ProgressPlotter(Callback):
             epoch_ax.set_xlim([0, max_steps / self.num_training_batches])
             epoch_ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
 
-    def get_logged_metrics(self):
-        def _fuse_metrics(metrics: list[dict]):
-            if len(metrics) == 0:
+    def get_logged_metrics(
+        self,
+    ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+        def _fuse_metrics(metrics_list: list[dict[str, Any]]) -> dict[str, Any]:
+            if len(metrics_list) == 0:
                 return {}
             metrics_values = defaultdict(list)
-            for submetrics in metrics:
+            for submetrics in metrics_list:
                 if len(submetrics) == 0:
                     continue
                 for name, value in submetrics.items():
                     metrics_values[name].append(value)
 
-            metrics = {
+            fused_metrics: dict[str, Any] = {
                 name: np.array(values) for name, values in metrics_values.items()
             }
-            return metrics
+            return fused_metrics
 
         train_metrics = _fuse_metrics(self.train_metrics)
         validation_metrics = _fuse_metrics(self.validation_metrics)

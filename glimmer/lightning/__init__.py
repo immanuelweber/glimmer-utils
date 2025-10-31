@@ -8,7 +8,7 @@ from glimmer.lightning.progressprinter import ProgressPrinter
 
 __all__ = [
     "LightProgressBar",
-    "ProgressPrinter",
-    "ProgressPlotter",
     "PatchedDataModule",
+    "ProgressPlotter",
+    "ProgressPrinter",
 ]

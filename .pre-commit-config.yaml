@@ -1,0 +1,49 @@
+# Pre-commit hooks for glimmer-utils
+# Install: pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # Ruff - Python linting and formatting (replaces black, isort, flake8)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
+    hooks:
+      # Run the linter
+      - id: ruff
+        args: [--fix]
+        types_or: [python, pyi]
+      # Run the formatter
+      - id: ruff-format
+        types_or: [python, pyi]
+
+  # MyPy - static type checking (require type hints, otherwise easy-going)
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        # Check main package only (skip tests)
+        exclude: ^tests/
+        args:
+          - --disallow-untyped-defs        # REQUIRE type hints on functions
+          - --disallow-incomplete-defs     # REQUIRE complete type hints
+          - --warn-unused-ignores          # Find unnecessary type: ignore comments
+          - --warn-redundant-casts         # Find unnecessary type casts
+          - --ignore-missing-imports       # Easy-going: don't complain about 3rd party
+          - --allow-untyped-calls          # Easy-going: can call untyped functions
+          - --no-warn-return-any           # Easy-going: don't warn about Any returns
+        additional_dependencies:
+          - types-setuptools
+          - numpy
+          - pandas
+          - matplotlib
+
+  # Basic checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      - id: check-merge-conflict
+      - id: debug-statements

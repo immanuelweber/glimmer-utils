@@ -5,7 +5,7 @@ import time
 import uuid
 from collections import defaultdict
 from functools import partial
-from typing import Literal
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
@@ -16,7 +16,7 @@ from pytorch_lightning.callbacks import Callback
 from glimmer.lightning.utils import is_console
 
 
-def fuse_samples(samples: np.ndarray):
+def fuse_samples(samples: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
     """
     Fuse samples with the same timestamp by using the latest entry.
 
@@ -31,7 +31,7 @@ def fuse_samples(samples: np.ndarray):
     return fused_samples
 
 
-def format_time(t):
+def format_time(t: float) -> str:
     """
     Format `t` (in seconds) to (h):mm:ss.
 
@@ -70,7 +70,7 @@ def format_duration(seconds: float) -> str:
         return f"{h}:{m:02d}:{s:02d}"
 
 
-def improvement_styler(df, metric="loss"):
+def improvement_styler(df: pd.DataFrame, metric: str = "loss") -> pd.DataFrame:
     """
     Style DataFrame to highlight improvements in the specified metric.
 
@@ -102,10 +102,10 @@ class ProgressPrinter(Callback):
         highlight_improvements: bool = True,
         improvement_metric: str = "loss",
         use_console: bool | Literal["auto"] = "auto",
-        python_logger=None,
+        python_logger: Any = None,
         silent: bool = False,
         table_format: bool = True,
-    ):
+    ) -> None:
         """
         Initialize the ProgressPrinter callback.
 
@@ -124,30 +124,32 @@ class ProgressPrinter(Callback):
         self.improvement_metric = improvement_metric
         self.use_console = use_console
         self.python_logger = python_logger
-        self.metrics = []
+        self.metrics: list[dict[str, Any]] = []
         self.best_epoch = {"loss": np.inf, "val/loss": np.inf, "epoch": -1}
-        self.last_time = 0
+        self.last_time: float = 0
         self.table_display = None
         self.table_id = "progressprinter-" + str(uuid.uuid4())
         self.silent = silent
         self.table_format = table_format
         self.header_printed = False
-        self.column_widths = {}
-        self.last_printed_step = None
-        self.last_printed_fractional_epoch = None
-        self.last_validation_metrics = {}
+        self.column_widths: dict[str, int] = {}
+        self.last_printed_step: int | None = None
+        self.last_printed_fractional_epoch: float | None = None
+        self.last_validation_metrics: dict[str, Any] = {}
 
-        self.epochs = []
-        self.epochs_times = []
-        self.train_metrics = []
-        self.validation_metrics = []
-        self.extra_metrics = []
+        self.epochs: list[list[Any]] = []
+        self.epochs_times: list[list[Any]] = []
+        self.train_metrics: list[dict[str, Any]] = []
+        self.validation_metrics: list[dict[str, Any]] = []
+        self.extra_metrics: list[dict[str, Any]] = []
         self.has_been_trained = False
 
-    def on_train_epoch_start(self, trainer, pl_module: LightningModule) -> None:
+    def on_train_epoch_start(
+        self, trainer: Trainer, pl_module: LightningModule
+    ) -> None:
         self.last_time = time.time()
 
-    def on_train_epoch_end(self, trainer, pl_module: LightningModule) -> None:
+    def on_train_epoch_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
         now = time.time()
         elapsed_time = now - self.last_time
 
@@ -178,7 +180,7 @@ class ProgressPrinter(Callback):
     def on_train_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
         self.has_been_trained = True
 
-    def on_validation_end(self, trainer: Trainer, pl_module: LightningModule):
+    def on_validation_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
         # NOTE: on_train_epoch_end is the default print caller
         # however, in case of incomplete epochs, this is also needs to be called
         # since we call validation explicitly after training
@@ -204,7 +206,7 @@ class ProgressPrinter(Callback):
             self.extra_metrics.append(current_extra_metrics)
             self.print(trainer)
 
-    def _print_jupyter(self, trainer) -> None:
+    def _print_jupyter(self, trainer: Trainer) -> None:
         metrics = self.static_print(trainer=trainer, verbose=False)
 
         if not self.table_display:
@@ -212,7 +214,7 @@ class ProgressPrinter(Callback):
         else:
             self.table_display.update(metrics)
 
-    def _calculate_fractional_epoch(self, trainer) -> float:
+    def _calculate_fractional_epoch(self, trainer: Trainer) -> float:
         """Calculate fractional epoch progress based on steps within current epoch."""
         current_epoch = trainer.current_epoch
         global_step = trainer.global_step
@@ -248,12 +250,12 @@ class ProgressPrinter(Callback):
             # Fallback to integer epochs if we can't calculate steps per epoch
             return float(current_epoch + 1)
 
-    def _calculate_column_widths(self, trainer) -> dict[str, int]:
+    def _calculate_column_widths(self, trainer: Trainer) -> dict[str, int]:
         """Calculate optimal column widths for table formatting."""
         train_metrics, val_metrics, extra_metrics = self.get_logged_metrics()
 
         # Get total epochs and steps for width calculation
-        max_epochs = trainer.max_epochs if trainer.max_epochs else 999
+        max_epochs: int = trainer.max_epochs if trainer.max_epochs else 999
         total_steps = (
             trainer.max_steps
             if trainer.max_steps != -1
@@ -312,12 +314,12 @@ class ProgressPrinter(Callback):
         header_line = "  ".join(header_parts)  # 2 spaces between columns
         print(f"🚀 {header_line}")
 
-    def _calculate_epoch_time(self, trainer) -> float:
+    def _calculate_epoch_time(self, trainer: Trainer) -> float:
         """Calculate the time taken for the current epoch."""
         current_time = time.time()
         return current_time - self.last_time
 
-    def _calculate_eta(self, trainer, current_epoch_time: float) -> float:
+    def _calculate_eta(self, trainer: Trainer, current_epoch_time: float) -> float:
         """Calculate estimated time to completion."""
         max_epochs = trainer.max_epochs if trainer.max_epochs else None
 
@@ -338,7 +340,7 @@ class ProgressPrinter(Callback):
 
         return remaining_epochs * avg_epoch_time
 
-    def _print_table_row(self, trainer, column_widths: dict[str, int]) -> None:
+    def _print_table_row(self, trainer: Trainer, column_widths: dict[str, int]) -> None:
         """Print a data row with proper column alignment."""
         train_metrics, val_metrics, extra_metrics = self.get_logged_metrics()
 
@@ -372,14 +374,15 @@ class ProgressPrinter(Callback):
         # Calculate padding based on total digits (account for decimal)
         if str(max_epochs).isdigit():
             # Padding should account for fractional display possibility
-            epoch_padding = len(f"{max_epochs - 0.1:.1f}/{max_epochs}")
+            max_epochs_int = int(max_epochs)
+            epoch_padding = len(f"{max_epochs_int - 0.1:.1f}/{max_epochs_int}")
         else:
             epoch_padding = len(f"99.9/{max_epochs}")
 
         # Determine epoch display format based on whether it's fractional
         if abs(fractional_epoch - round(fractional_epoch)) < 0.01:
             # Complete epoch - display as integer
-            epoch_display = f"{int(round(fractional_epoch))}/{max_epochs}"
+            epoch_display = f"{round(fractional_epoch):.0f}/{max_epochs}"
         else:
             # Fractional epoch - display with decimal
             epoch_display = f"{fractional_epoch:.1f}/{max_epochs}"
@@ -470,14 +473,14 @@ class ProgressPrinter(Callback):
         self.last_printed_step = latest_step
         self.last_printed_fractional_epoch = fractional_epoch
 
-    def _print_console(self, trainer) -> None:
+    def _print_console(self, trainer: Trainer) -> None:
         """Print progress in either table format or single-line format."""
         if self.table_format:
             self._print_console_table(trainer)
         else:
             self._print_console_single_line(trainer)
 
-    def _print_console_table(self, trainer) -> None:
+    def _print_console_table(self, trainer: Trainer) -> None:
         """Print progress in table format with aligned columns."""
         # Calculate column widths on first call
         if not self.column_widths:
@@ -491,7 +494,7 @@ class ProgressPrinter(Callback):
         # Print data row
         self._print_table_row(trainer, self.column_widths)
 
-    def _print_console_single_line(self, trainer) -> None:
+    def _print_console_single_line(self, trainer: Trainer) -> None:
         """Print progress in single-line format (original behavior)."""
         train_metrics, val_metrics, extra_metrics = self.get_logged_metrics()
 
@@ -548,7 +551,7 @@ class ProgressPrinter(Callback):
         progress_line = " | ".join(progress_parts)
         print(f"🚀 {progress_line}")
 
-    def print(self, trainer) -> None:
+    def print(self, trainer: Trainer) -> None:
         """
         Print training progress based on the use_console setting.
 
@@ -575,28 +578,28 @@ class ProgressPrinter(Callback):
             # Explicit boolean value
             return bool(self.use_console)
 
-    def static_print(self, trainer=None, verbose: bool = True) -> pd.DataFrame:
-        def metrics_to_dataframe(metrics: dict):
+    def static_print(
+        self, trainer: Trainer | None = None, verbose: bool = True
+    ) -> pd.DataFrame:
+        def metrics_to_dataframe(metrics: dict[str, Any]) -> pd.DataFrame:
             metrics_df = pd.DataFrame()
             for metric_name, data in metrics.items():
                 temp_df = pd.DataFrame(data, columns=["step", metric_name])
                 if metrics_df.empty:
                     metrics_df = temp_df
                 else:
-                    metrics_df = pd.merge(
-                        metrics_df, temp_df, on="step", how="outer"
-                    )
+                    metrics_df = pd.merge(metrics_df, temp_df, on="step", how="outer")
             return metrics_df
 
-        train_metrics, validation_metrics, extra_metrics = self.get_logged_metrics()
-        train_metrics = metrics_to_dataframe(train_metrics)
-        validation_metrics = metrics_to_dataframe(validation_metrics)
-        extra_metrics = metrics_to_dataframe(extra_metrics)
-        metrics = train_metrics
+        train_metrics_dict, validation_metrics_dict, extra_metrics_dict = (
+            self.get_logged_metrics()
+        )
+        train_metrics: pd.DataFrame = metrics_to_dataframe(train_metrics_dict)
+        validation_metrics: pd.DataFrame = metrics_to_dataframe(validation_metrics_dict)
+        extra_metrics: pd.DataFrame = metrics_to_dataframe(extra_metrics_dict)
+        metrics: pd.DataFrame = train_metrics
         if len(validation_metrics) > 0:
-            metrics = pd.merge(
-                metrics, validation_metrics, on="step", how="outer"
-            )
+            metrics = pd.merge(metrics, validation_metrics, on="step", how="outer")
         if len(extra_metrics) > 0:
             metrics = pd.merge(metrics, extra_metrics, on="step", how="outer")
         metrics = metrics.sort_values(by="step")
@@ -649,7 +652,9 @@ class ProgressPrinter(Callback):
         # Format epoch index with max epochs if available
         if trainer and trainer.max_epochs:
             max_epochs = trainer.max_epochs
-            metrics["epoch"] = metrics["epoch"].apply(lambda x: f"{int(x)}/{max_epochs}")
+            metrics["epoch"] = metrics["epoch"].apply(
+                lambda x: f"{int(x)}/{max_epochs}"
+            )
 
         # Format step column with max steps if available
         if "step" in metrics.columns and trainer:
@@ -661,41 +666,42 @@ class ProgressPrinter(Callback):
                 max_steps = None
 
             if max_steps:
-                metrics["step"] = metrics["step"].apply(lambda x: f"{int(x)}/{max_steps}")
+                metrics["step"] = metrics["step"].apply(
+                    lambda x: f"{int(x)}/{max_steps}"
+                )
 
         metrics = metrics.set_index("epoch")
         metrics = metrics.convert_dtypes()
         metrics["time"] = metrics["time"].apply(format_duration)
 
         # https://stackoverflow.com/questions/49239476/hide-a-pandas-column-while-using-style-apply
-        if self.highlight_improvements:
-            if self.improvement_metric in metrics.columns:
-                partial_styler = partial(
-                    improvement_styler, metric=self.improvement_metric
-                )
-                metrics = metrics.style.apply(partial_styler, axis=None)
+        if self.highlight_improvements and self.improvement_metric in metrics.columns:
+            partial_styler = partial(improvement_styler, metric=self.improvement_metric)
+            metrics = metrics.style.apply(partial_styler, axis=None)
 
         if verbose:
             display(metrics, display_id=43 + random.randint(0, int(1e6)))
 
         return metrics
 
-    def get_logged_metrics(self):
-        def _fuse_metrics(metrics: list[dict]):
-            if len(metrics) == 0:
+    def get_logged_metrics(
+        self,
+    ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+        def _fuse_metrics(metrics_list: list[dict[str, Any]]) -> dict[str, Any]:
+            if len(metrics_list) == 0:
                 return {}
             metrics_values = defaultdict(list)
-            for submetrics in metrics:
+            for submetrics in metrics_list:
                 if len(submetrics) == 0:
                     continue
                 for name, value in submetrics.items():
                     metrics_values[name].append(value)
 
-            metrics = {
+            fused_metrics: dict[str, Any] = {
                 name: fuse_samples(np.array(values))
                 for name, values in metrics_values.items()
             }
-            return metrics
+            return fused_metrics
 
         train_metrics = _fuse_metrics(self.train_metrics)
         validation_metrics = _fuse_metrics(self.validation_metrics)
