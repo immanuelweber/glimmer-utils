@@ -24,8 +24,8 @@ jobs:
 
       - name: Scan for secrets
         run: |
-          # Perform a fresh scan
-          detect-secrets scan > /tmp/current-scan.json
+          # Perform a fresh scan (exclude the baseline file itself)
+          detect-secrets scan --exclude-files '\.secrets\.baseline$' > /tmp/current-scan.json
 
           # Compare with baseline - check if new secrets were added
           python3 << 'EOF'
