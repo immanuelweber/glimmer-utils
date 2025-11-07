@@ -149,5 +149,5 @@ jobs:
           python -m venv test_env
           source test_env/bin/activate
           pip install dist/*.whl
-          python -c "import glimmer_utils; print(f'✅ Successfully imported glimmer_utils version {glimmer_utils.__version__}')"
+          python -c "import glimmer; print(f'✅ Successfully imported glimmer version {glimmer.__version__}')"
           deactivate
