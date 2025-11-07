@@ -7,6 +7,66 @@ on:
     branches: [main]
 
 jobs:
+  secret-scanning:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for comprehensive secret scanning
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install detect-secrets
+        run: pip install detect-secrets
+
+      - name: Scan for secrets
+        run: |
+          # Perform a fresh scan (exclude the baseline file itself)
+          detect-secrets scan --exclude-files '\.secrets\.baseline$' > /tmp/current-scan.json
+
+          # Compare with baseline - check if new secrets were added
+          python3 << 'EOF'
+          import json
+          import sys
+
+          with open('.secrets.baseline', 'r') as f:
+              baseline = json.load(f)
+
+          with open('/tmp/current-scan.json', 'r') as f:
+              current = json.load(f)
+
+          baseline_secrets = baseline.get('results', {})
+          current_secrets = current.get('results', {})
+
+          # Check if new secrets were found
+          new_secrets = {}
+          for file_path, secrets in current_secrets.items():
+              if file_path not in baseline_secrets:
+                  new_secrets[file_path] = secrets
+              else:
+                  # Compare individual secrets
+                  baseline_file_secrets = {s.get('hashed_secret'): s for s in baseline_secrets.get(file_path, [])}
+                  for secret in secrets:
+                      if secret.get('hashed_secret') not in baseline_file_secrets:
+                          if file_path not in new_secrets:
+                              new_secrets[file_path] = []
+                          new_secrets[file_path].append(secret)
+
+          if new_secrets:
+              print("❌ New secrets detected!")
+              for file_path, secrets in new_secrets.items():
+                  print(f"\nFile: {file_path}")
+                  for secret in secrets:
+                      print(f"  Line {secret.get('line_number')}: {secret.get('type')}")
+              sys.exit(1)
+          else:
+              print("✅ No new secrets detected")
+              sys.exit(0)
+          EOF
+
   pre-commit:
     runs-on: ubuntu-latest
     steps:
