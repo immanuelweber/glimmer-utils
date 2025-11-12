@@ -29,32 +29,21 @@ For development and testing, install the optional extras in editable mode:
 pip install -e '.[dev,test]'
 ```
 
-The `pyproject.toml` specifies all build requirements and uses
-`setuptools_scm` to derive the version from git tags. The repository is
-currently tagged at **v0.3.0**.
-
-
-
-## Requirements
-
-Glimmer Utils requires Python 3.10 or later. The runtime dependencies are:
-
-- numpy
-- pandas
-- matplotlib
-- ipython
-- torch
-- pytorch-lightning
-
-These packages are listed in `pyproject.toml` and will be installed
-automatically when you install the project (see the Installation section
-above).
+The package uses `setuptools_scm` to automatically derive the version from git tags.
 
 ## Development
 
 ### Quick Setup with justfile
 
-This project uses [just](https://github.com/casey/just) for task automation. After cloning the repository, run:
+This project uses [just](https://github.com/casey/just) for task automation.
+
+First, install just if you haven't already:
+
+```bash
+pip install just-bin
+```
+
+After cloning the repository, run:
 
 ```bash
 just setup
@@ -84,14 +73,20 @@ Run `just --list` to see all available commands:
 
 ## Testing
 
-Run the unit tests with [pytest](https://docs.pytest.org/):
+Run the unit tests:
+
+```bash
+just test
+```
+
+Or directly with [pytest](https://docs.pytest.org/):
 
 ```bash
 pytest -v
 ```
 
-To verify the package compiles, run:
+For tests with coverage report:
 
 ```bash
-python -m compileall -q glimmer
+just test-cov
 ```
