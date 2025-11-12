@@ -52,11 +52,35 @@ above).
 
 ## Development
 
-Install additional tools for linting and testing:
+### Quick Setup with justfile
+
+This project uses [just](https://github.com/casey/just) for task automation. After cloning the repository, run:
+
+```bash
+just setup
+```
+
+This will install the package in editable mode with all dev dependencies and set up pre-commit hooks.
+
+Alternatively, you can run the steps manually:
 
 ```bash
 pip install -e '.[dev,test]'
+pre-commit install
 ```
+
+### Available justfile commands
+
+Run `just --list` to see all available commands:
+
+- `just setup` - Install package and pre-commit hooks
+- `just install` - Install package in editable mode with dev dependencies
+- `just install-hooks` - Install pre-commit hooks
+- `just lint` - Run all pre-commit hooks on all files
+- `just test` - Run pytest with verbose output
+- `just test-cov` - Run tests with coverage report
+- `just check` - Run all checks (lint + typecheck)
+- `just ci` - Full CI workflow
 
 ## Testing
 

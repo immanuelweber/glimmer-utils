@@ -15,6 +15,9 @@ install:
 install-hooks:
     pre-commit install
 
+# Setup project (install package + hooks)
+setup: install install-hooks
+
 # Run all pre-commit hooks on all files
 lint:
     pre-commit run --all-files
