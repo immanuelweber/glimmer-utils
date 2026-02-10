@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Modifications copyright (C) 2021 - 2025 Immanuel Weber
+# Modifications copyright (C) 2021 - 2026 Immanuel Weber
 # derived from https://github.com/PyTorchLightning/pytorch-lightning/blob/master/pytorch_lightning/callbacks/lr_monitor.py
 
 from typing import Any

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Modifications Copyright (c) 2018 - 2025 Immanuel Weber
+# Modifications Copyright (c) 2018 - 2026 Immanuel Weber
 
 
 from collections.abc import Callable, Mapping, Sequence
