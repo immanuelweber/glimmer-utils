@@ -252,7 +252,7 @@ class ProgressPrinter(Callback):
 
     def _calculate_column_widths(self, trainer: Trainer) -> dict[str, int]:
         """Calculate optimal column widths for table formatting."""
-        train_metrics, val_metrics, extra_metrics = self.get_logged_metrics()
+        train_metrics, val_metrics, _extra_metrics = self.get_logged_metrics()
 
         # Get total epochs and steps for width calculation
         max_epochs: int = trainer.max_epochs if trainer.max_epochs else 999
@@ -342,7 +342,7 @@ class ProgressPrinter(Callback):
 
     def _print_table_row(self, trainer: Trainer, column_widths: dict[str, int]) -> None:
         """Print a data row with proper column alignment."""
-        train_metrics, val_metrics, extra_metrics = self.get_logged_metrics()
+        train_metrics, val_metrics, _extra_metrics = self.get_logged_metrics()
 
         # Get latest metrics for current epoch
         latest_step = trainer.global_step
@@ -496,7 +496,7 @@ class ProgressPrinter(Callback):
 
     def _print_console_single_line(self, trainer: Trainer) -> None:
         """Print progress in single-line format (original behavior)."""
-        train_metrics, val_metrics, extra_metrics = self.get_logged_metrics()
+        train_metrics, val_metrics, _extra_metrics = self.get_logged_metrics()
 
         # Get latest metrics for current epoch
         latest_step = trainer.global_step

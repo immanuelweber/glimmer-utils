@@ -139,7 +139,7 @@ class ProgressPlotter(Callback):
         if ax is None:
             _, ax = plt.subplots()
 
-        train_metrics, validation_metrics, extra_metrics = self.get_logged_metrics()
+        train_metrics, validation_metrics, _extra_metrics = self.get_logged_metrics()
         max_steps = max_steps if max_steps else len(train_metrics["loss"])
         for name, values in train_metrics.items():
             if "loss" not in name:
