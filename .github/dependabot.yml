@@ -1,19 +1,27 @@
 version: 2
 updates:
-  # Keep GitHub Actions up to date
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "monthly"
-    labels:
-      - "dependencies"
-      - "github-actions"
-
-  # Keep pip dependencies up to date
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
-      interval: "monthly"
-    labels:
-      - "dependencies"
-      - "python"
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    groups:
+      development-dependencies:
+        patterns: ["pytest*", "ruff", "mypy", "pre-commit", "types-*"]
+        update-types: ["minor", "patch"]
+      production-dependencies:
+        patterns: ["*"]
+        exclude-patterns: ["pytest*", "ruff", "mypy", "pre-commit", "types-*"]
+        update-types: ["minor", "patch"]
+    versioning-strategy: increase
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      github-actions:
+        patterns: ["*"]
