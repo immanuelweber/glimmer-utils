@@ -58,9 +58,7 @@ class LightProgressBar(TQDMProgressBar):
             self.val_progress_bar.initial = 0  # type: ignore[attr-defined]
         super().on_train_epoch_start(trainer, *_)
 
-    def on_validation_start(
-        self, trainer: pl.Trainer, pl_module: pl.LightningModule
-    ) -> None:
+    def on_validation_start(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
         """Called when validation starts.
 
         Initializes the validation progress bar if not in sanity checking mode
@@ -73,9 +71,7 @@ class LightProgressBar(TQDMProgressBar):
         if not trainer.sanity_checking and self._val_progress_bar is None:
             self.val_progress_bar = self.init_validation_tqdm()
 
-    def on_validation_end(
-        self, trainer: pl.Trainer, pl_module: pl.LightningModule
-    ) -> None:
+    def on_validation_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
         """Called when validation ends.
 
         Closes the validation progress bar if not in fitting mode, resets dataloader
@@ -88,15 +84,10 @@ class LightProgressBar(TQDMProgressBar):
         if trainer.state.fn != TrainerFn.FITTING:
             self.val_progress_bar.close()  # type: ignore[attr-defined]
         self.reset_dataloader_idx_tracker()
-        if (
-            self._train_progress_bar is not None
-            and trainer.state.fn == TrainerFn.FITTING
-        ):
+        if self._train_progress_bar is not None and trainer.state.fn == TrainerFn.FITTING:
             self.train_progress_bar.set_postfix(self.get_metrics(trainer, pl_module))
 
-    def get_metrics(
-        self, trainer: pl.Trainer, pl_module: pl.LightningModule
-    ) -> dict[str, Any]:
+    def get_metrics(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> dict[str, Any]:
         """Get metrics to display in the progress bar.
 
         Filters the metrics to show only the main loss value, removing individual

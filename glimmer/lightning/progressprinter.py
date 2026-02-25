@@ -5,12 +5,14 @@ import time
 import uuid
 from collections import defaultdict
 from functools import partial
-from typing import Any, Literal
+from typing import Any
+from typing import Literal
 
 import numpy as np
 import pandas as pd
 from IPython.display import display
-from pytorch_lightning import LightningModule, Trainer
+from pytorch_lightning import LightningModule
+from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import Callback
 
 from glimmer.lightning.utils import is_console
@@ -144,9 +146,7 @@ class ProgressPrinter(Callback):
         self.extra_metrics: list[dict[str, Any]] = []
         self.has_been_trained = False
 
-    def on_train_epoch_start(
-        self, trainer: Trainer, pl_module: LightningModule
-    ) -> None:
+    def on_train_epoch_start(self, trainer: Trainer, pl_module: LightningModule) -> None:
         self.last_time = time.time()
 
     def on_train_epoch_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
@@ -227,15 +227,10 @@ class ProgressPrinter(Callback):
             and trainer.datamodule.train_dataloader()
         ):
             steps_per_epoch = len(trainer.datamodule.train_dataloader())
-        elif (
-            hasattr(trainer, "estimated_stepping_batches")
-            and trainer.estimated_stepping_batches
-        ):
+        elif hasattr(trainer, "estimated_stepping_batches") and trainer.estimated_stepping_batches:
             # Estimate based on total steps and max epochs
             if trainer.max_epochs and trainer.max_epochs > 0:
-                steps_per_epoch = (
-                    trainer.estimated_stepping_batches / trainer.max_epochs
-                )
+                steps_per_epoch = trainer.estimated_stepping_batches / trainer.max_epochs
             else:
                 steps_per_epoch = None
         else:
@@ -428,10 +423,7 @@ class ProgressPrinter(Callback):
                     current_value = latest_value[-1, 1]
 
                     # Check if this is a validation update and value changed
-                    if (
-                        is_validation_update
-                        and short_name in self.last_validation_metrics
-                    ):
+                    if is_validation_update and short_name in self.last_validation_metrics:
                         previous_value = self.last_validation_metrics[short_name]
                         if abs(current_value - previous_value) > 1e-6:  # Value changed
                             row_data[short_name] = f"*{current_value:.4f}"
@@ -578,9 +570,7 @@ class ProgressPrinter(Callback):
             # Explicit boolean value
             return bool(self.use_console)
 
-    def static_print(
-        self, trainer: Trainer | None = None, verbose: bool = True
-    ) -> pd.DataFrame:
+    def static_print(self, trainer: Trainer | None = None, verbose: bool = True) -> pd.DataFrame:
         def metrics_to_dataframe(metrics: dict[str, Any]) -> pd.DataFrame:
             metrics_df = pd.DataFrame()
             for metric_name, data in metrics.items():
@@ -591,9 +581,7 @@ class ProgressPrinter(Callback):
                     metrics_df = pd.merge(metrics_df, temp_df, on="step", how="outer")
             return metrics_df
 
-        train_metrics_dict, validation_metrics_dict, extra_metrics_dict = (
-            self.get_logged_metrics()
-        )
+        train_metrics_dict, validation_metrics_dict, extra_metrics_dict = self.get_logged_metrics()
         train_metrics: pd.DataFrame = metrics_to_dataframe(train_metrics_dict)
         validation_metrics: pd.DataFrame = metrics_to_dataframe(validation_metrics_dict)
         extra_metrics: pd.DataFrame = metrics_to_dataframe(extra_metrics_dict)
@@ -652,9 +640,7 @@ class ProgressPrinter(Callback):
         # Format epoch index with max epochs if available
         if trainer and trainer.max_epochs:
             max_epochs = trainer.max_epochs
-            metrics["epoch"] = metrics["epoch"].apply(
-                lambda x: f"{int(x)}/{max_epochs}"
-            )
+            metrics["epoch"] = metrics["epoch"].apply(lambda x: f"{int(x)}/{max_epochs}")
 
         # Format step column with max steps if available
         if "step" in metrics.columns and trainer:
@@ -666,9 +652,7 @@ class ProgressPrinter(Callback):
                 max_steps = None
 
             if max_steps:
-                metrics["step"] = metrics["step"].apply(
-                    lambda x: f"{int(x)}/{max_steps}"
-                )
+                metrics["step"] = metrics["step"].apply(lambda x: f"{int(x)}/{max_steps}")
 
         metrics = metrics.set_index("epoch")
         metrics = metrics.convert_dtypes()
@@ -698,8 +682,7 @@ class ProgressPrinter(Callback):
                     metrics_values[name].append(value)
 
             fused_metrics: dict[str, Any] = {
-                name: fuse_samples(np.array(values))
-                for name, values in metrics_values.items()
+                name: fuse_samples(np.array(values)) for name, values in metrics_values.items()
             }
             return fused_metrics
 

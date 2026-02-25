@@ -15,21 +15,21 @@
 # Modifications Copyright (c) 2018 - 2026 Immanuel Weber
 
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable
+from collections.abc import Mapping
+from collections.abc import Sequence
 from typing import Any
 
 import pytorch_lightning as pl
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
+from torch.utils.data import Dataset
 
 
 class PatchedDataModule(pl.LightningDataModule):
     @classmethod
     def from_datasets(
         cls,
-        train_dataset: Dataset
-        | Sequence[Dataset]
-        | Mapping[str, Dataset]
-        | None = None,
+        train_dataset: Dataset | Sequence[Dataset] | Mapping[str, Dataset] | None = None,
         val_dataset: Dataset | Sequence[Dataset] | None = None,
         test_dataset: Dataset | Sequence[Dataset] | None = None,
         batch_size: int = 1,

@@ -4,17 +4,10 @@ from typing import Any
 
 
 def get_num_training_batches(trainer: Any) -> int:
-    if (
-        isinstance(trainer.limit_train_batches, int)
-        or trainer.limit_train_batches == 0.0
-    ):
-        num_training_batches = min(
-            trainer.num_training_batches, int(trainer.limit_train_batches)
-        )
+    if isinstance(trainer.limit_train_batches, int) or trainer.limit_train_batches == 0.0:
+        num_training_batches = min(trainer.num_training_batches, int(trainer.limit_train_batches))
     elif trainer.num_training_batches != float("inf"):
-        num_training_batches = int(
-            trainer.num_training_batches * trainer.limit_train_batches
-        )
+        num_training_batches = int(trainer.num_training_batches * trainer.limit_train_batches)
     return num_training_batches
 
 

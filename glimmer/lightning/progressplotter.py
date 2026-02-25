@@ -7,10 +7,12 @@ from typing import Any
 import numpy as np
 from IPython.display import display
 from matplotlib import pyplot as plt
-from pytorch_lightning import LightningModule, Trainer
+from pytorch_lightning import LightningModule
+from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import Callback
 
-from glimmer.lightning.lightning_derived import get_lrs, get_scheduler_names
+from glimmer.lightning.lightning_derived import get_lrs
+from glimmer.lightning.lightning_derived import get_scheduler_names
 
 # for multiple y axis see
 # https://stackoverflow.com/questions/9103166/multiple-axis-in-matplotlib-with-different-scales
@@ -81,9 +83,7 @@ class ProgressPlotter(Callback):
 
     def on_train_epoch_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
         if not self.silent:
-            self.update_plot(
-                trainer, self.highlight_best, self.show_lr, self.show_epochs
-            )
+            self.update_plot(trainer, self.highlight_best, self.show_lr, self.show_epochs)
         self.has_been_trained = True
 
     def on_validation_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
@@ -105,9 +105,7 @@ class ProgressPlotter(Callback):
         }
         self.extra_metrics.append(current_extra_metrics)
         if not trainer.training and self.has_been_trained and not self.silent:
-            self.update_plot(
-                trainer, self.highlight_best, self.show_lr, self.show_epochs
-            )
+            self.update_plot(trainer, self.highlight_best, self.show_lr, self.show_epochs)
 
     def update_plot(
         self, trainer: Trainer, highlight_best: bool, show_lr: bool, show_epochs: bool
@@ -124,9 +122,7 @@ class ProgressPlotter(Callback):
         if self.plot_display:
             self.plot_display.update(fig)
         else:
-            self.plot_display = display(
-                fig, display_id="progressplotter-" + self.plot_id
-            )
+            self.plot_display = display(fig, display_id="progressplotter-" + self.plot_id)
 
     def static_plot(
         self,
@@ -148,9 +144,7 @@ class ProgressPlotter(Callback):
         # FIXME: better use a dict for that
         train_colors = [line.get_color() for line in ax.get_lines()]
 
-        for (name, values), color in zip(
-            validation_metrics.items(), train_colors, strict=True
-        ):
+        for (name, values), color in zip(validation_metrics.items(), train_colors, strict=True):
             if "loss" not in name:
                 continue
             ax.plot(
