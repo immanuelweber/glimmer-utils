@@ -25,9 +25,7 @@ def get_scheduler_names(schedulers: list[Any]) -> list[str]:
         if scheduler.name is not None:
             name = scheduler.name
         else:
-            opt_name = (
-                "lr-" + sch.optimizer.__class__.__name__ + "-" + sch.__class__.__name__
-            )
+            opt_name = "lr-" + sch.optimizer.__class__.__name__ + "-" + sch.__class__.__name__
             i, name = 1, opt_name
             # Multiple scheduler of the same type
             while True:
@@ -44,9 +42,7 @@ def get_scheduler_names(schedulers: list[Any]) -> list[str]:
     return names
 
 
-def get_lrs(
-    schedulers: list[Any], scheduler_names: list[str], interval: str
-) -> dict[str, Any]:
+def get_lrs(schedulers: list[Any], scheduler_names: list[str], interval: str) -> dict[str, Any]:
     latest_stat: dict[str, Any] = {}
 
     for name, scheduler in zip(scheduler_names, schedulers):
