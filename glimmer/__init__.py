@@ -1,5 +1,7 @@
 """Top-level package for Glimmer Utils."""
 
+from __future__ import annotations
+
 try:
     from glimmer._version import __version__
 except ImportError:

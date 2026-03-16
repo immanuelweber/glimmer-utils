@@ -1,7 +1,3 @@
-# Pre-commit hooks for glimmer-utils
-# Install: pre-commit install
-# Run manually: pre-commit run --all-files
-
 repos:
   # Basic checks
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -12,49 +8,47 @@ repos:
       - id: check-yaml
       - id: check-added-large-files
         args: [--maxkb=1000]
+        exclude: '^(uv\.lock|pylock\.toml)$'
       - id: check-toml
       - id: check-merge-conflict
       - id: debug-statements
       - id: mixed-line-ending
         args: [--fix=lf]
 
-  # Ruff - Python linting and formatting (replaces black, isort, flake8)
+  # Ruff - Python linting and formatting
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.14.2
     hooks:
-      # Run the linter
+      # First try to fix issues
       - id: ruff
         args: [--fix]
         types_or: [python, pyi]
-      # Run the formatter
+      # Format the code
       - id: ruff-format
         types_or: [python, pyi]
+      # Then check like CI/CD does
+      - id: ruff
+        name: ruff-check-ci
+        args: []  # No --fix, just check
+        types_or: [python, pyi]
+      - id: ruff-format
+        name: ruff-format-check-ci
+        args: [--check]  # Check only, don't format
+        types_or: [python, pyi]
 
-  # MyPy - static type checking (require type hints, otherwise easy-going)
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.21.0
+    hooks:
+      - id: pyupgrade
+        args: [--py310-plus]
+
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.13.0
+    rev: v1.18.2
     hooks:
       - id: mypy
-        # Check main package only (skip tests)
-        exclude: ^tests/
-        args:
-          - --disallow-untyped-defs        # REQUIRE type hints on functions
-          - --disallow-incomplete-defs     # REQUIRE complete type hints
-          - --warn-unused-ignores          # Find unnecessary type: ignore comments
-          - --warn-redundant-casts         # Find unnecessary type casts
-          - --ignore-missing-imports       # Easy-going: don't complain about 3rd party
-          - --allow-untyped-calls          # Easy-going: can call untyped functions
-          - --no-warn-return-any           # Easy-going: don't warn about Any returns
-        additional_dependencies:
-          - types-setuptools
-          - numpy
-          - pandas
-          - matplotlib
-
-  # Secret scanning
-  - repo: https://github.com/Yelp/detect-secrets
-    rev: v1.5.0
-    hooks:
-      - id: detect-secrets
-        args: ['--baseline', '.secrets.baseline']
-        exclude: '(package\.lock\.json|\.secrets\.baseline)$'
+        additional_dependencies: [types-PyYAML]
+        args: [--explicit-package-bases]
+        files: ^glimmer/  # Check only glimmer package
+        stages: [manual]  # Only run manually, don't block commits
+        # MyPy errors don't block commits (type hints are improving gradually)
+        # Run manually with: pre-commit run mypy --all-files

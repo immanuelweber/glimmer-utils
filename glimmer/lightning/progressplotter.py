@@ -1,18 +1,22 @@
 # Copyright (c) 2021 - 2025 Immanuel Weber. Licensed under the MIT license (see LICENSE).
+from __future__ import annotations
 
 import uuid
-from collections import defaultdict
+from typing import TYPE_CHECKING
 from typing import Any
+from collections import defaultdict
 
 import numpy as np
-from IPython.display import display
 from matplotlib import pyplot as plt
-from pytorch_lightning import LightningModule
-from pytorch_lightning import Trainer
+from IPython.display import display
 from pytorch_lightning.callbacks import Callback
 
 from glimmer.lightning.lightning_derived import get_lrs
 from glimmer.lightning.lightning_derived import get_scheduler_names
+
+if TYPE_CHECKING:
+    from pytorch_lightning import Trainer
+    from pytorch_lightning import LightningModule
 
 # for multiple y axis see
 # https://stackoverflow.com/questions/9103166/multiple-axis-in-matplotlib-with-different-scales
@@ -136,7 +140,7 @@ class ProgressPlotter(Callback):
             _, ax = plt.subplots()
 
         train_metrics, validation_metrics, _extra_metrics = self.get_logged_metrics()
-        max_steps = max_steps if max_steps else len(train_metrics["loss"])
+        max_steps = max_steps or len(train_metrics["loss"])
         for name, values in train_metrics.items():
             if "loss" not in name:
                 continue

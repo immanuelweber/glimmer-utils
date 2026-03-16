@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sys
 import types
 import unittest
@@ -52,10 +54,10 @@ from glimmer.lightning import progressprinter as pp
 
 class ProgressPrinterTestCase(unittest.TestCase):
     def test_format_time_hours_minutes_seconds(self):
-        self.assertEqual(pp.format_time(3661), "1:01:01")
+        assert pp.format_time(3661) == "1:01:01"
 
     def test_format_time_zero(self):
-        self.assertEqual(pp.format_time(0), "0:00:00")
+        assert pp.format_time(0) == "0:00:00"
 
 
 if __name__ == "__main__":

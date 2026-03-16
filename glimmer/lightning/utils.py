@@ -1,4 +1,5 @@
 # Copyright (c) 2018 - 2025 Immanuel Weber. Licensed under the MIT license (see LICENSE).
+from __future__ import annotations
 
 from typing import Any
 
@@ -21,8 +22,7 @@ def get_max_epochs(trainer: Any) -> float:
 
 
 def is_console() -> bool:
-    """
-    Detect whether we're running in a console/terminal environment or Jupyter.
+    """Detect whether we're running in a console/terminal environment or Jupyter.
 
     Returns:
         bool: True if running in console/terminal, False if in Jupyter/IPython.

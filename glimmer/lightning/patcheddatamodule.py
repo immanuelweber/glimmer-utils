@@ -13,16 +13,19 @@
 # limitations under the License.
 
 # Modifications Copyright (c) 2018 - 2026 Immanuel Weber
+from __future__ import annotations
 
-
-from collections.abc import Callable
-from collections.abc import Mapping
-from collections.abc import Sequence
+from typing import TYPE_CHECKING
 from typing import Any
+from collections.abc import Mapping
+from collections.abc import Callable
+from collections.abc import Sequence
 
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
-from torch.utils.data import Dataset
+
+if TYPE_CHECKING:
+    from torch.utils.data import Dataset
 
 
 class PatchedDataModule(pl.LightningDataModule):
@@ -39,9 +42,8 @@ class PatchedDataModule(pl.LightningDataModule):
         test_batch_size: int | None = None,
         prefetch_factor: int | None = None,
         pin_memory: bool = True,
-    ) -> "PatchedDataModule":
-        r"""
-        Create an instance from torch.utils.data.Dataset.
+    ) -> PatchedDataModule:
+        r"""Create an instance from torch.utils.data.Dataset.
 
         Args:
             train_dataset: (optional) Dataset to be used for train_dataloader()
@@ -59,7 +61,7 @@ class PatchedDataModule(pl.LightningDataModule):
                 before returning them. Default is True for better GPU performance.
 
         """
-        test_batch_size = test_batch_size if test_batch_size else batch_size
+        test_batch_size = test_batch_size or batch_size
 
         def dataloader(
             ds: Dataset,

@@ -1,12 +1,16 @@
 # Copyright (c) 2021 - 2025 Immanuel Weber. Licensed under the MIT license (see LICENSE).
+from __future__ import annotations
 
 import sys
+from typing import TYPE_CHECKING
 from typing import Any
 
-import pytorch_lightning as pl
 from pytorch_lightning.callbacks import TQDMProgressBar
-from pytorch_lightning.callbacks.progress.tqdm_progress import Tqdm
 from pytorch_lightning.trainer.states import TrainerFn
+from pytorch_lightning.callbacks.progress.tqdm_progress import Tqdm
+
+if TYPE_CHECKING:
+    import pytorch_lightning as pl
 
 
 class LightProgressBar(TQDMProgressBar):

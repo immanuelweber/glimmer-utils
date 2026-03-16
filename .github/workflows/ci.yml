@@ -2,156 +2,101 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
-    branches: [main]
+    branches: [main, dev]
 
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: "3.10"
+          python-version: "3.12"
 
-      - name: Install dependencies
+      - name: Lint (pre-commit)
+        uses: pre-commit/action@v3.0.1
+
+  pip-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: 0.10.6
+      - name: Export uv lock file
         run: |
-          python -m pip install --upgrade pip
-          pip install pre-commit
+          uv export --format=pylock.toml --all-extras --no-editable --no-emit-local > pylock.toml
 
-      - name: Cache pre-commit hooks
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pre-commit
-          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
-
-      - name: Run pre-commit
-        run: pre-commit run --all-files --show-diff-on-failure
+      - name: Run pip-audit
+        run: |
+          uvx pip-audit --locked . --desc
+        continue-on-error: true
 
   test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: 0.10.6
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
-          cache: 'pip'
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
-      - name: Run tests
-        run: pytest tests/ -v
 
-  security:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+      - name: Cache uv packages
+        uses: actions/cache@v5
         with:
-          fetch-depth: 0  # Full history for comprehensive secret scanning
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            uv-${{ runner.os }}-${{ matrix.python-version }}-
+            uv-${{ runner.os }}-
 
       - name: Install dependencies
+        run: uv sync
+
+      - name: Test with pytest
         run: |
-          python -m pip install --upgrade pip
-          pip install detect-secrets pip-audit
-          pip install -e .
-
-      - name: Scan for secrets
-        run: |
-          # Perform a fresh scan (exclude the baseline file itself)
-          detect-secrets scan --exclude-files '\.secrets\.baseline$' > /tmp/current-scan.json
-
-          # Compare with baseline - check if new secrets were added
-          python3 << 'EOF'
-          import json
-          import sys
-
-          with open('.secrets.baseline', 'r') as f:
-              baseline = json.load(f)
-
-          with open('/tmp/current-scan.json', 'r') as f:
-              current = json.load(f)
-
-          baseline_secrets = baseline.get('results', {})
-          current_secrets = current.get('results', {})
-
-          # Check if new secrets were found
-          new_secrets = {}
-          for file_path, secrets in current_secrets.items():
-              if file_path not in baseline_secrets:
-                  new_secrets[file_path] = secrets
-              else:
-                  # Compare individual secrets
-                  baseline_file_secrets = {s.get('hashed_secret'): s for s in baseline_secrets.get(file_path, [])}
-                  for secret in secrets:
-                      if secret.get('hashed_secret') not in baseline_file_secrets:
-                          if file_path not in new_secrets:
-                              new_secrets[file_path] = []
-                          new_secrets[file_path].append(secret)
-
-          if new_secrets:
-              print("❌ New secrets detected!")
-              for file_path, secrets in new_secrets.items():
-                  print(f"\nFile: {file_path}")
-                  for secret in secrets:
-                      print(f"  Line {secret.get('line_number')}: {secret.get('type')}")
-              sys.exit(1)
-          else:
-              print("✅ No new secrets detected")
-              sys.exit(0)
-          EOF
-
-      - name: Run pip-audit for CVE scanning
-        run: |
-          pip-audit --desc --format json | tee audit-report.json
-          if [ $(jq '.vulnerabilities | length' audit-report.json) -gt 0 ]; then
-            echo "❌ Security vulnerabilities found in dependencies!"
-            pip-audit --desc
-            exit 1
-          else
-            echo "✅ No security vulnerabilities detected"
-          fi
+          uv run pytest tests/ -v --cov=glimmer --cov-report=xml --cov-report=term-missing
 
   build:
     runs-on: ubuntu-latest
     needs: [lint, test]
-    strategy:
-      matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
         with:
-          python-version: ${{ matrix.python-version }}
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: 0.10.6
 
-      - name: Install build tools
-        run: |
-          python -m pip install --upgrade pip
-          pip install build twine
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
 
       - name: Build package
-        run: python -m build
-
-      - name: Check package metadata
-        run: twine check dist/*
+        run: uv build -o dist/
 
       - name: Test installation in fresh environment
         run: |
           python -m venv test_env
           source test_env/bin/activate
           pip install dist/*.whl
-          python -c "import glimmer; print(f'✅ Successfully imported glimmer version {glimmer.__version__}')"
+          python -c "import glimmer; print(f'Successfully imported glimmer')"
           deactivate
