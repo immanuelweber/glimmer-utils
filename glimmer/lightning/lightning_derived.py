@@ -14,6 +14,7 @@
 
 # Modifications copyright (C) 2021 - 2026 Immanuel Weber
 # derived from https://github.com/PyTorchLightning/pytorch-lightning/blob/master/pytorch_lightning/callbacks/lr_monitor.py
+from __future__ import annotations
 
 from typing import Any
 
@@ -45,8 +46,8 @@ def get_scheduler_names(schedulers: list[Any]) -> list[str]:
 def get_lrs(schedulers: list[Any], scheduler_names: list[str], interval: str) -> dict[str, Any]:
     latest_stat: dict[str, Any] = {}
 
-    for name, scheduler in zip(scheduler_names, schedulers):
-        if scheduler.interval == interval or interval == "any":
+    for name, scheduler in zip(scheduler_names, schedulers, strict=False):
+        if interval in (scheduler.interval, "any"):
             opt = scheduler.scheduler.optimizer
             param_groups = opt.param_groups
             for i, pg in enumerate(param_groups):

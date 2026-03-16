@@ -1,26 +1,29 @@
 # Copyright (c) 2021 - 2025 Immanuel Weber. Licensed under the MIT license (see LICENSE).
+from __future__ import annotations
 
-import random
 import time
 import uuid
-from collections import defaultdict
-from functools import partial
+import random
+from typing import TYPE_CHECKING
 from typing import Any
 from typing import Literal
+from functools import partial
+from collections import defaultdict
 
 import numpy as np
 import pandas as pd
 from IPython.display import display
-from pytorch_lightning import LightningModule
-from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import Callback
 
 from glimmer.lightning.utils import is_console
 
+if TYPE_CHECKING:
+    from pytorch_lightning import Trainer
+    from pytorch_lightning import LightningModule
+
 
 def fuse_samples(samples: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
-    """
-    Fuse samples with the same timestamp by using the latest entry.
+    """Fuse samples with the same timestamp by using the latest entry.
 
     Args:
         samples (np.ndarray): A NumPy array with shape (n_samples, n_columns).
@@ -29,13 +32,11 @@ def fuse_samples(samples: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
         np.ndarray: A NumPy array with shape (n_unique_samples, n_columns).
     """
     fused_samples_dict = {row[0]: row for row in samples}
-    fused_samples = np.array(list(fused_samples_dict.values()))
-    return fused_samples
+    return np.array(list(fused_samples_dict.values()))
 
 
 def format_time(t: float) -> str:
-    """
-    Format `t` (in seconds) to (h):mm:ss.
+    """Format `t` (in seconds) to (h):mm:ss.
 
     Args:
         t: Time in seconds.
@@ -49,8 +50,7 @@ def format_time(t: float) -> str:
 
 
 def format_duration(seconds: float) -> str:
-    """
-    Format duration in seconds to compact time format.
+    """Format duration in seconds to compact time format.
 
     Args:
         seconds: Duration in seconds.
@@ -65,16 +65,15 @@ def format_duration(seconds: float) -> str:
     if seconds < 3600:  # Less than 1 hour
         m, s = seconds // 60, seconds % 60
         return f"{m:2d}:{s:02d}"
-    else:  # 1 hour or more
-        h = seconds // 3600
-        m = (seconds % 3600) // 60
-        s = seconds % 60
-        return f"{h}:{m:02d}:{s:02d}"
+    # 1 hour or more
+    h = seconds // 3600
+    m = (seconds % 3600) // 60
+    s = seconds % 60
+    return f"{h}:{m:02d}:{s:02d}"
 
 
 def improvement_styler(df: pd.DataFrame, metric: str = "loss") -> pd.DataFrame:
-    """
-    Style DataFrame to highlight improvements in the specified metric.
+    """Style DataFrame to highlight improvements in the specified metric.
 
     Args:
         df: The DataFrame to style.
@@ -108,8 +107,7 @@ class ProgressPrinter(Callback):
         silent: bool = False,
         table_format: bool = True,
     ) -> None:
-        """
-        Initialize the ProgressPrinter callback.
+        """Initialize the ProgressPrinter callback.
 
         Args:
             highlight_improvements (bool): Whether to highlight improvements in metrics.
@@ -241,16 +239,15 @@ class ProgressPrinter(Callback):
             steps_in_current_epoch = global_step - (current_epoch * steps_per_epoch)
             fraction = steps_in_current_epoch / steps_per_epoch
             return current_epoch + fraction
-        else:
-            # Fallback to integer epochs if we can't calculate steps per epoch
-            return float(current_epoch + 1)
+        # Fallback to integer epochs if we can't calculate steps per epoch
+        return float(current_epoch + 1)
 
     def _calculate_column_widths(self, trainer: Trainer) -> dict[str, int]:
         """Calculate optimal column widths for table formatting."""
         train_metrics, val_metrics, _extra_metrics = self.get_logged_metrics()
 
         # Get total epochs and steps for width calculation
-        max_epochs: int = trainer.max_epochs if trainer.max_epochs else 999
+        max_epochs: int = trainer.max_epochs or 999
         total_steps = (
             trainer.max_steps
             if trainer.max_steps != -1
@@ -316,7 +313,7 @@ class ProgressPrinter(Callback):
 
     def _calculate_eta(self, trainer: Trainer, current_epoch_time: float) -> float:
         """Calculate estimated time to completion."""
-        max_epochs = trainer.max_epochs if trainer.max_epochs else None
+        max_epochs = trainer.max_epochs or None
 
         if not max_epochs or max_epochs <= 0:
             return -1  # Unknown ETA
@@ -355,7 +352,7 @@ class ProgressPrinter(Callback):
         )
 
         # Get total epochs and steps if available
-        max_epochs = trainer.max_epochs if trainer.max_epochs else "?"
+        max_epochs = trainer.max_epochs or "?"
         total_steps = (
             trainer.max_steps
             if trainer.max_steps != -1
@@ -495,7 +492,7 @@ class ProgressPrinter(Callback):
         latest_epoch = trainer.current_epoch
 
         # Get total epochs and steps if available
-        max_epochs = trainer.max_epochs if trainer.max_epochs else "?"
+        max_epochs = trainer.max_epochs or "?"
         total_steps = (
             trainer.max_steps
             if trainer.max_steps != -1
@@ -544,8 +541,7 @@ class ProgressPrinter(Callback):
         print(f"🚀 {progress_line}")
 
     def print(self, trainer: Trainer) -> None:
-        """
-        Print training progress based on the use_console setting.
+        """Print training progress based on the use_console setting.
 
         Args:
             trainer: The PyTorch Lightning trainer instance.
@@ -557,8 +553,7 @@ class ProgressPrinter(Callback):
             self._print_console(trainer)
 
     def _should_use_console(self) -> bool:
-        """
-        Determine whether to use console output based on the use_console setting.
+        """Determine whether to use console output based on the use_console setting.
 
         Returns:
             bool: True if console output should be used, False for Jupyter output.
@@ -566,9 +561,8 @@ class ProgressPrinter(Callback):
         if self.use_console == "auto":
             # Auto-detect environment using utility function
             return is_console()
-        else:
-            # Explicit boolean value
-            return bool(self.use_console)
+        # Explicit boolean value
+        return bool(self.use_console)
 
     def static_print(self, trainer: Trainer | None = None, verbose: bool = True) -> pd.DataFrame:
         def metrics_to_dataframe(metrics: dict[str, Any]) -> pd.DataFrame:
@@ -594,7 +588,7 @@ class ProgressPrinter(Callback):
 
         # Calculate ETA for each row
         if "time" in metrics.columns and len(self.epochs_times) > 0 and trainer:
-            max_epochs = trainer.max_epochs if trainer.max_epochs else None
+            max_epochs = trainer.max_epochs or None
 
             # Get epoch times
             epoch_times = [time_data[1] for time_data in self.epochs_times]

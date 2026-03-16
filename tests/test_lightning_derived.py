@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sys
 import types
 import unittest
@@ -50,19 +52,19 @@ from glimmer.lightning import lightning_derived as ld
 
 
 class DummyOptimizer:
-    def __init__(self, lr_values):
+    def __init__(self, lr_values) -> None:
         self.param_groups = lr_values
 
 
 class DummyScheduler:
-    def __init__(self, optimizer, interval="epoch"):
+    def __init__(self, optimizer, interval="epoch") -> None:
         self.optimizer = optimizer
         self.__class__.__name__ = "DummyScheduler"
         self.interval = interval
 
 
 class DummyLRSchedulerConfig:
-    def __init__(self, optimizer, name=None, interval="epoch"):
+    def __init__(self, optimizer, name=None, interval="epoch") -> None:
         self.scheduler = DummyScheduler(optimizer, interval)
         self.name = name
         self.interval = interval
@@ -72,19 +74,16 @@ class LightningDerivedTestCase(unittest.TestCase):
     def test_get_scheduler_names_unique(self):
         optim = DummyOptimizer([{"lr": 0.1}])
         sched = DummyLRSchedulerConfig(optim, name="sched1")
-        self.assertEqual(ld.get_scheduler_names([sched]), ["sched1"])
+        assert ld.get_scheduler_names([sched]) == ["sched1"]
 
     def test_get_scheduler_names_multiple_param_groups(self):
         optim = DummyOptimizer([{"lr": 0.1}, {"lr": 0.2}])
         sched = DummyLRSchedulerConfig(optim)
         names = ld.get_scheduler_names([sched])
-        self.assertEqual(
-            names,
-            [
-                "lr-DummyOptimizer-DummyScheduler/pg1",
-                "lr-DummyOptimizer-DummyScheduler/pg2",
-            ],
-        )
+        assert names == [
+            "lr-DummyOptimizer-DummyScheduler/pg1",
+            "lr-DummyOptimizer-DummyScheduler/pg2",
+        ]
 
     def test_get_lrs_interval_filter(self):
         optim1 = DummyOptimizer([{"lr": 0.1}])
@@ -93,7 +92,7 @@ class LightningDerivedTestCase(unittest.TestCase):
         sched2 = DummyLRSchedulerConfig(optim2, name="s2", interval="epoch")
         names = ld.get_scheduler_names([sched1, sched2])
         lrs = ld.get_lrs([sched1, sched2], names, interval="step")
-        self.assertEqual(lrs, {"s1": 0.1})
+        assert lrs == {"s1": 0.1}
 
 
 if __name__ == "__main__":

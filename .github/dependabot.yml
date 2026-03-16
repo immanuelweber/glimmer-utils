@@ -1,27 +1,48 @@
 version: 2
 updates:
+  # Enable version updates for pip (Python dependencies)
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 10
+    # Group minor and patch updates together to reduce PR spam
     groups:
       development-dependencies:
-        patterns: ["pytest*", "ruff", "mypy", "pre-commit", "types-*"]
-        update-types: ["minor", "patch"]
+        patterns:
+          - "pytest*"
+          - "ruff"
+          - "mypy"
+          - "pre-commit"
+          - "types-*"
+        update-types:
+          - "minor"
+          - "patch"
       production-dependencies:
-        patterns: ["*"]
-        exclude-patterns: ["pytest*", "ruff", "mypy", "pre-commit", "types-*"]
-        update-types: ["minor", "patch"]
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "pytest*"
+          - "ruff"
+          - "mypy"
+          - "pre-commit"
+          - "types-*"
+        update-types:
+          - "minor"
+          - "patch"
+    # Allow Dependabot to update version requirements in pyproject.toml
     versioning-strategy: increase
 
+  # Enable version updates for GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 5
+    # Group all GitHub Actions updates together
     groups:
       github-actions:
-        patterns: ["*"]
+        patterns:
+          - "*"

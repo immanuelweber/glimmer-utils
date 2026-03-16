@@ -1,92 +1,68 @@
-# Glimmer Utils
+# glimmer
 
-[![Python versions](https://img.shields.io/badge/python-%3E%3D3.10-blue)](https://www.python.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 [![CI](https://github.com/immanuelweber/glimmer-utils/workflows/CI/badge.svg)](https://github.com/immanuelweber/glimmer-utils/actions)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](#)
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
+[![Code style: Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 Utilities for working with [PyTorch](https://pytorch.org/) and [PyTorch Lightning](https://www.pytorchlightning.ai/).
 
 ## Features
 
-- Data collators for padding and stacking tensors
-- Lightning callbacks for progress bars, printing and plotting
-- A patched `LightningDataModule` for quick dataset usage
+### Data
+- **Collators** for padding and stacking tensors with variable-length inputs
 
-## Installation
+### Lightning
+- **PatchedDataModule** for quick dataset usage with PyTorch Lightning
+- **LightProgressBar** — minimal progress bar callback
+- **ProgressPlotter** — live training curve plotting
+- **ProgressPrinter** — formatted metric printing
+- **Utilities** — helper functions for Lightning modules
 
-Clone the repository and install the package:
+## Quick Start
 
 ```bash
 git clone https://github.com/immanuelweber/glimmer-utils.git
 cd glimmer-utils
-pip install .
+uv sync
 ```
 
-For development and testing, install the optional extras in editable mode:
-
-```bash
-pip install -e '.[dev,test]'
+```python
+from glimmer.data.collators import PadCollator
+from glimmer.lightning.patcheddatamodule import PatchedDataModule
 ```
 
-The package uses `setuptools_scm` to automatically derive the version from git tags.
+## Project Structure
+
+```
+glimmer/
+    data/
+        collators.py          # Padding and stacking collators
+    lightning/
+        lightning_derived.py  # Extended Lightning module
+        lightprogressbar.py   # Minimal progress bar
+        patcheddatamodule.py  # Patched LightningDataModule
+        progressplotter.py    # Live training curves
+        progressprinter.py    # Formatted metric output
+        utils.py              # Lightning helpers
+```
 
 ## Development
 
-### Quick Setup with justfile
-
-This project uses [just](https://github.com/casey/just) for task automation.
-
-First, install just if you haven't already:
-
 ```bash
-pip install just-bin
-```
-
-After cloning the repository, run:
-
-```bash
-just setup
-```
-
-This will install the package in editable mode with all dev dependencies and set up pre-commit hooks.
-
-Alternatively, you can run the steps manually:
-
-```bash
-pip install -e '.[dev,test]'
+uv sync --group dev
 pre-commit install
 ```
 
-### Available justfile commands
-
-Run `just --list` to see all available commands:
-
-- `just setup` - Install package and pre-commit hooks
-- `just install` - Install package in editable mode with dev dependencies
-- `just install-hooks` - Install pre-commit hooks
-- `just lint` - Run all pre-commit hooks on all files
-- `just test` - Run pytest with verbose output
-- `just test-cov` - Run tests with coverage report
-- `just check` - Run all checks (lint + typecheck)
-- `just ci` - Full CI workflow
-
-## Testing
-
-Run the unit tests:
-
 ```bash
-just test
+ruff check .            # Lint
+ruff format .           # Format
+uv run pytest           # Test
+uv run mypy glimmer     # Type check
 ```
 
-Or directly with [pytest](https://docs.pytest.org/):
+## License
 
-```bash
-pytest -v
-```
-
-For tests with coverage report:
-
-```bash
-just test-cov
-```
+MIT - see [LICENSE](LICENSE) for details.
