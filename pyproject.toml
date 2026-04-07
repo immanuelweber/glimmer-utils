@@ -320,3 +320,7 @@ module = [
     "PIL.*",
 ]
 ignore_missing_imports = true
+
+# Supply-Chain-Hardening: nur Packages installieren die mindestens 7 Tage alt sind
+[tool.uv]
+exclude-newer = "7d"
