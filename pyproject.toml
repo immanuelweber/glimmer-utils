@@ -35,7 +35,7 @@ Issues = "https://github.com/immanuelweber/glimmer-utils/issues"
 
 [dependency-groups]
 dev = [
-  "pytest>=6.0",
+  "pytest>=9.0.3",
   "pytest-cov>=3.0",
   "ruff>=0.1.0",
   "mypy>=1.0.0",
