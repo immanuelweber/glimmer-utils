@@ -37,7 +37,7 @@ Issues = "https://github.com/immanuelweber/glimmer-utils/issues"
 dev = [
   "pytest>=6.0",
   "pytest-cov>=3.0",
-  "ruff>=0.1.0",
+  "ruff>=0.15.11",
   "mypy>=1.0.0",
   "pre-commit>=3.0.0",
 ]
